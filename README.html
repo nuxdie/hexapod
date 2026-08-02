@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Build brief for a lightweight, 18-servo SG90 hexapod robot.">
+  <meta name="description" content="Build brief for a lightweight, 18-servo hexapod robot.">
   <title>HEX-01 / Hexapod Build Dossier</title>
   <style>
     :root {
@@ -106,6 +106,28 @@
       background: var(--signal);
       box-shadow: 0 0 0 3px rgba(226, 77, 42, 0.22);
     }
+
+    .tool-menu {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    .tool-menu a {
+      padding: 5px 8px;
+      color: #cacabd;
+      border: 1px solid rgba(232, 228, 216, 0.35);
+      font: 700 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .tool-menu a:hover,
+    .tool-menu a.active { color: #fff4df; border-color: var(--signal); background: var(--signal-dark); }
 
     .hero {
       display: grid;
@@ -595,7 +617,8 @@
       header { min-height: auto; color: black; background: white; border-color: black; }
       header::before,
       .schematic,
-      nav { display: none; }
+      nav,
+      .tool-menu { display: none; }
       h1 span,
       .number { color: black; }
       .lede,
@@ -614,6 +637,11 @@
       <div class="topline">
         <span>Field engineering document / Revision 0.1</span>
         <span class="status">Prototype definition</span>
+      </div>
+      <div class="tool-menu" aria-label="Project tools">
+        <a class="active" href="README.html" aria-current="page">Build dossier</a>
+        <a href="servo_mapper.html">Servo mapper</a>
+        <a href="servo_control.html">Manual control</a>
       </div>
       <div class="hero">
         <div>
@@ -664,7 +692,7 @@
         <div class="nav-spec">
           PLATFORM: HEXAPOD<br>
           MASS TARGET: MINIMUM<br>
-          ACTUATORS: 18 x SG90<br>
+          ACTUATORS: 18 x PWM SERVO<br>
           PRIMARY GAIT: TRIPOD<br>
           CONTROL: PICO / ESP<br>
           STATE: BRING-UP
@@ -681,11 +709,11 @@
             </div>
           </div>
           <div class="manifesto">
-            HEX-01 is a 3-DOF-per-leg hexapod: six articulated legs, eighteen inexpensive SG90 servos, a light printed frame, and a microcontroller executing inverse kinematics and a statically stable tripod gait.
+            HEX-01 is a 3-DOF-per-leg hexapod: six articulated legs, eighteen inexpensive positional servos, a light printed frame, and a microcontroller executing inverse kinematics and a statically stable tripod gait.
           </div>
           <div class="spec-grid" aria-label="Core specifications">
             <div class="spec"><strong>Body plan</strong><span>Six legs, three rotary joints per leg</span></div>
-            <div class="spec"><strong>Actuation</strong><span>18 standard PWM SG90 micro servos</span></div>
+            <div class="spec"><strong>Actuation</strong><span>12 positional 180-degree and 6 positional 360-degree servos</span></div>
             <div class="spec"><strong>Locomotion</strong><span>Alternating tripod gait</span></div>
             <div class="spec"><strong>Local control</strong><span>Pico or ESP32 running the motion loop</span></div>
             <div class="spec"><strong>Servo interface</strong><span>Two addressable PCA9685 boards at 50 Hz</span></div>
@@ -735,7 +763,8 @@
               <tr><th>Qty</th><th>Component</th><th>Role / selection note</th></tr>
             </thead>
             <tbody>
-              <tr><td class="qty">18</td><td>SG90 micro servo</td><td>Coxa, femur, and tibia actuation. Calibrate every unit; clone pulse ranges and usable travel vary.</td></tr>
+              <tr><td class="qty">12</td><td>180-degree positional servo</td><td>Hip/coxa and knee/femur actuation. Calibrate safe mechanical limits per joint.</td></tr>
+              <tr><td class="qty">6</td><td>360-degree positional servo</td><td>Heel/tibia actuation. Pulse width selects an absolute angle and the servo uses the shortest path to reach it.</td></tr>
               <tr><td class="qty">2</td><td>PCA9685 16-channel driver</td><td>I2C PWM generation. Use addresses <code>0x40</code> and <code>0x41</code>.</td></tr>
               <tr><td class="qty">1</td><td>Pico or ESP32</td><td>Real-time gait and leg-control processor. Start with one, not both.</td></tr>
               <tr><td class="qty">1</td><td>Regulated 5 V supply</td><td>Dedicated high-current servo rail. Size from measured load with headroom.</td></tr>
@@ -872,13 +901,15 @@
             <div class="number">08</div>
             <div>
               <h2>Project files</h2>
-              <p class="section-summary">The repository currently contains mechanical models and an initial MicroPython PCA9685 test.</p>
+              <p class="section-summary">The repository contains mechanical models, Pico firmware, servo mapping, and manual actuator controls.</p>
             </div>
           </div>
           <div class="file-list">
             <a href="pca9685_bringup.py">pca9685_bringup.py</a>
             <a href="servo_mapper.html">servo_mapper.html</a>
+            <a href="servo_control.html">servo_control.html</a>
             <a href="servo_mapper_pico.py">servo_mapper_pico.py</a>
+            <a href="servo-map.json">servo-map.json</a>
             <span>body.3mf</span>
             <span>coxa - left.3mf</span>
             <span>coxa - right.3mf</span>
@@ -891,6 +922,10 @@
             <strong>Servo assignment tool</strong>
             <p>Install <code>servo_mapper_pico.py</code> on the Pico as <code>main.py</code>, serve this directory with <code>python3 -m http.server 8000</code>, then open <a href="servo_mapper.html"><code>http://localhost:8000/servo_mapper.html</code></a> in Chrome or Edge. The mapper identifies physical outputs with a narrow wiggle and exports the completed 18-joint map as JSON.</p>
           </div>
+          <div class="note">
+            <strong>Manual servo control</strong>
+            <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control one mapped joint at a time. Position mode supports live slider movement over <code>500-2500 us</code>; commands are coalesced to avoid a serial backlog. Relax disables PWM on the selected output.</p>
+          </div>
           <div class="note warning">
             <strong>Current code status</strong>
             <p><code>pca9685_bringup.py</code> initializes both PCA9685 boards unconditionally and loops over all 16 channels on each board. That is a 32-channel test, not an 18-servo test. Before connecting the complete robot, revise it to map exactly 18 named joints and only command channels that are physically populated.</p>
@@ -900,7 +935,7 @@
     </div>
 
     <footer>
-      <span>HEX-01 / SG90 HEXAPOD DEVELOPMENT DOSSIER</span>
+      <span>HEX-01 / HEXAPOD DEVELOPMENT DOSSIER</span>
       <span>Next gate: safe single-leg calibration and IK</span>
     </footer>
   </div>

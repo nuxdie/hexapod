@@ -1,8 +1,9 @@
 """
 HEX-01 servo mapper bridge for Raspberry Pi Pico / MicroPython.
 
-Run this on the Pico as main.py, then open servo_mapper.html in a Web Serial
-capable browser. The browser sends one JSON command per line over USB serial.
+Run this on the Pico as main.py, then open servo_mapper.html or
+servo_control.html in a Web Serial capable browser. The browser sends one JSON
+command per line over USB serial.
 
 Pico wiring:
     GP0  -> SDA on both PCA9685 boards
@@ -37,9 +38,9 @@ PCA_ADDRESSES = (0x40, 0x41)
 PWM_FREQUENCY_HZ = 50
 PWM_PERIOD_US = 1_000_000 // PWM_FREQUENCY_HZ
 
-# Conservative protocol limits. Individual servo travel still needs calibration.
-MIN_CENTER_US = 900
-MAX_CENTER_US = 2100
+# Protocol limits. Mechanical safe limits still need calibration per joint.
+MIN_PULSE_US = 500
+MAX_PULSE_US = 2500
 MIN_DELTA_US = 5
 MAX_DELTA_US = 60
 MIN_HOLD_MS = 60
@@ -149,10 +150,14 @@ def probe(command):
 
     if not 0 <= channel <= 15:
         raise ValueError("channel must be between 0 and 15")
-    if not MIN_CENTER_US <= center_us <= MAX_CENTER_US:
+    if not MIN_PULSE_US <= center_us <= MAX_PULSE_US:
         raise ValueError("center_us is outside the safe mapper range")
     if not MIN_DELTA_US <= delta_us <= MAX_DELTA_US:
         raise ValueError("delta_us is outside the safe mapper range")
+    if center_us - delta_us < MIN_PULSE_US:
+        raise ValueError("probe pulse is below the control range")
+    if center_us + delta_us > MAX_PULSE_US:
+        raise ValueError("probe pulse is above the control range")
     if not 1 <= cycles <= MAX_CYCLES:
         raise ValueError("cycles is outside the safe mapper range")
     if not MIN_HOLD_MS <= hold_ms <= MAX_HOLD_MS:
@@ -191,7 +196,7 @@ def handle(command):
         return {
             "ok": True,
             "event": "ready",
-            "version": 2,
+            "version": 4,
             "addresses": [hex(address) for address in detected_addresses],
             "available_addresses": [
                 hex(PCA_ADDRESSES[index])
@@ -203,6 +208,21 @@ def handle(command):
 
     if name == "probe":
         return probe(command)
+
+    if name == "set_pulse":
+        board_index, board = board_for(command)
+        channel = integer(command, "channel")
+        pulse_us = integer(command, "pulse_us")
+        if not MIN_PULSE_US <= pulse_us <= MAX_PULSE_US:
+            raise ValueError("pulse_us is outside the safe control range")
+        board.set_pulse_us(channel, pulse_us)
+        return {
+            "ok": True,
+            "cmd": "set_pulse",
+            "board": board_index,
+            "channel": channel,
+            "pulse_us": pulse_us,
+        }
 
     if name == "relax":
         board_index, board = board_for(command)
@@ -250,7 +270,7 @@ def main():
     initialize_hardware()
     send({
         "event": "ready",
-        "version": 2,
+        "version": 4,
         "addresses": [hex(address) for address in detected_addresses],
         "available_addresses": [
             hex(PCA_ADDRESSES[index])

@@ -97,6 +97,27 @@
       text-transform: uppercase;
     }
 
+    .tool-menu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .tool-menu a {
+      padding: 4px 7px;
+      color: #b8beb9;
+      border: 1px solid #4c5651;
+      border-radius: 2px;
+      font: 700 9px/1.2 "Courier New", monospace;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .tool-menu a:hover,
+    .tool-menu a.active { color: #fff4df; border-color: var(--signal); background: var(--signal-dark); }
+
     .connection {
       display: flex;
       align-items: center;
@@ -645,6 +666,11 @@
         <div>
           <h1>Servo assignment console</h1>
           <div class="subtitle">Physical output identification / 18-joint map</div>
+          <div class="tool-menu" aria-label="Project tools">
+            <a href="README.html">Build dossier</a>
+            <a class="active" href="servo_mapper.html" aria-current="page">Servo mapper</a>
+            <a href="servo_control.html">Manual control</a>
+          </div>
         </div>
       </div>
       <div class="connection">

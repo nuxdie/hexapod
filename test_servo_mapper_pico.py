@@ -85,6 +85,61 @@ class PCA9685Tests(unittest.TestCase):
         self.assertEqual(channel_writes[8], bytes((0x00, 0x00, 0x00, 0x10)))
         self.assertEqual(response["relaxed"], True)
 
+    def test_set_pulse_command_drives_requested_channel(self):
+        mapper.boards = [self.pca, None]
+
+        response = mapper.handle({
+            "cmd": "set_pulse",
+            "board": 0,
+            "channel": 3,
+            "pulse_us": 1600,
+        })
+
+        self.assertEqual(response["pulse_us"], 1600)
+        self.assertEqual(
+            self.i2c.writes[-1],
+            (0x40, mapper.LED0_ON_L + 4 * 3, bytes((0x00, 0x00, 0x48, 0x01))),
+        )
+
+    def test_set_pulse_rejects_out_of_range_value(self):
+        mapper.boards = [self.pca, None]
+
+        with self.assertRaisesRegex(ValueError, "safe control range"):
+            mapper.handle({
+                "cmd": "set_pulse",
+                "board": 0,
+                "channel": 3,
+                "pulse_us": 2600,
+            })
+
+    def test_set_pulse_accepts_expanded_position_range(self):
+        mapper.boards = [self.pca, None]
+
+        mapper.handle({
+            "cmd": "set_pulse",
+            "board": 0,
+            "channel": 1,
+            "pulse_us": 2500,
+        })
+
+        self.assertEqual(
+            self.i2c.writes[-1],
+            (0x40, mapper.LED0_ON_L + 4, bytes((0x00, 0x00, 0x00, 0x02))),
+        )
+
+    def test_probe_rejects_wiggle_past_pulse_boundary(self):
+        mapper.boards = [self.pca, None]
+
+        with self.assertRaisesRegex(ValueError, "below the control range"):
+            mapper.probe({
+                "board": 0,
+                "channel": 0,
+                "center_us": 500,
+                "delta_us": 40,
+                "cycles": 1,
+                "hold_ms": 60,
+            })
+
 
 if __name__ == "__main__":
     unittest.main()
