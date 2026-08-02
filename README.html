@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Build brief for a lightweight, 18-servo SG90 hexapod robot.">
+  <title>HEX-01 / Hexapod Build Dossier</title>
+  <style>
+    :root {
+      --ink: #17201d;
+      --paper: #e8e4d8;
+      --paper-deep: #d9d3c4;
+      --line: #8b8b7e;
+      --muted: #59615c;
+      --signal: #e24d2a;
+      --signal-dark: #9c311a;
+      --night: #202925;
+      --grid: rgba(23, 32, 29, 0.08);
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--night);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background-color: var(--paper);
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+      font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+      line-height: 1.58;
+    }
+
+    a { color: inherit; }
+
+    code,
+    .mono {
+      font-family: "Courier New", Courier, monospace;
+    }
+
+    .shell {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      border-right: 1px solid var(--ink);
+      border-left: 1px solid var(--ink);
+      background: rgba(232, 228, 216, 0.94);
+    }
+
+    header {
+      position: relative;
+      min-height: 520px;
+      padding: 28px 40px 44px;
+      overflow: hidden;
+      color: var(--paper);
+      background: var(--night);
+      border-bottom: 8px solid var(--signal);
+    }
+
+    header::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      opacity: 0.14;
+      background-image:
+        linear-gradient(rgba(232, 228, 216, 0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232, 228, 216, 0.35) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    .topline,
+    .hero {
+      position: relative;
+      z-index: 1;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(232, 228, 216, 0.4);
+      color: #cacabd;
+      font: 700 12px/1.2 "Courier New", monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: #fff4df;
+    }
+
+    .status::before {
+      width: 9px;
+      height: 9px;
+      content: "";
+      background: var(--signal);
+      box-shadow: 0 0 0 3px rgba(226, 77, 42, 0.22);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+      gap: 34px;
+      align-items: center;
+      padding-top: 52px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p { margin-top: 0; }
+
+    h1 {
+      max-width: 680px;
+      margin-bottom: 20px;
+      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-size: clamp(62px, 10vw, 128px);
+      font-weight: 900;
+      line-height: 0.8;
+      letter-spacing: -0.035em;
+      text-transform: uppercase;
+    }
+
+    h1 span {
+      display: block;
+      color: var(--signal);
+    }
+
+    .lede {
+      max-width: 610px;
+      margin: 0;
+      color: #d7d7ca;
+      font-family: Georgia, serif;
+      font-size: clamp(18px, 2.2vw, 23px);
+      line-height: 1.42;
+    }
+
+    .schematic {
+      width: 100%;
+      filter: drop-shadow(14px 18px 0 rgba(0, 0, 0, 0.16));
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      min-height: 100vh;
+      padding: 36px 24px;
+      color: var(--paper);
+      background: #29332f;
+      border-right: 1px solid var(--ink);
+    }
+
+    .nav-title {
+      margin-bottom: 24px;
+      color: #aeb3aa;
+      font: 700 11px/1.3 "Courier New", monospace;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    nav a {
+      display: block;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(232, 228, 216, 0.13);
+      color: #e2e0d6;
+      font-size: 14px;
+      text-decoration: none;
+      transition: color 140ms ease, border-color 140ms ease;
+    }
+
+    nav a:hover,
+    nav a:focus-visible {
+      color: #ff7958;
+      border-color: var(--signal);
+    }
+
+    .nav-spec {
+      margin-top: 44px;
+      padding-top: 14px;
+      border-top: 4px solid var(--signal);
+      color: #bec2ba;
+      font: 12px/1.65 "Courier New", monospace;
+    }
+
+    main {
+      min-width: 0;
+      padding: 24px 40px 72px;
+    }
+
+    section {
+      padding: 50px 0;
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 20px;
+    }
+
+    section:last-child { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+
+    .number {
+      color: var(--signal);
+      font: 900 31px/1 "Courier New", monospace;
+      letter-spacing: -0.08em;
+    }
+
+    h2 {
+      margin-bottom: 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -0.025em;
+    }
+
+    .section-summary {
+      max-width: 670px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .manifesto {
+      padding: 24px 26px;
+      border-top: 6px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper-deep);
+      font-family: Georgia, serif;
+      font-size: clamp(20px, 2.5vw, 28px);
+      line-height: 1.4;
+    }
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 24px;
+      border-top: 1px solid var(--ink);
+      border-left: 1px solid var(--ink);
+    }
+
+    .spec {
+      min-height: 138px;
+      padding: 18px;
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .spec strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--signal-dark);
+      font: 800 12px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .spec span {
+      font-family: Georgia, serif;
+      font-size: 21px;
+      line-height: 1.2;
+    }
+
+    .stack {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border: 1px solid var(--ink);
+    }
+
+    .stack article {
+      min-height: 220px;
+      padding: 24px;
+      border-right: 1px solid var(--ink);
+    }
+
+    .stack article:last-child { border-right: 0; }
+
+    h3 {
+      margin-bottom: 12px;
+      font-family: Georgia, serif;
+      font-size: 24px;
+      font-weight: 400;
+      line-height: 1.2;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 4px 7px;
+      color: var(--paper);
+      background: var(--signal-dark);
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stack p,
+    .note p { margin-bottom: 0; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      margin-top: 28px;
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .flow div {
+      position: relative;
+      min-height: 120px;
+      padding: 16px 20px 16px 12px;
+      border-right: 1px solid var(--line);
+      font: 700 13px/1.4 "Courier New", monospace;
+    }
+
+    .flow div:last-child { border-right: 0; }
+
+    .flow div:not(:last-child)::after {
+      position: absolute;
+      z-index: 1;
+      top: 45px;
+      right: -10px;
+      width: 18px;
+      height: 18px;
+      content: "";
+      background: var(--paper);
+      border-top: 1px solid var(--ink);
+      border-right: 1px solid var(--ink);
+      transform: rotate(45deg);
+    }
+
+    .flow small {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--signal-dark);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .parts,
+    .pinout {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .parts th,
+    .parts td,
+    .pinout th,
+    .pinout td {
+      padding: 13px 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .parts th,
+    .pinout th {
+      color: var(--paper);
+      background: var(--ink);
+      font: 700 11px/1.3 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .parts tr:hover td,
+    .pinout tr:hover td { background: rgba(226, 77, 42, 0.07); }
+
+    .qty {
+      width: 68px;
+      color: var(--signal-dark);
+      font: 700 14px/1.5 "Courier New", monospace;
+    }
+
+    .note {
+      margin: 28px 0;
+      padding: 18px 20px;
+      border-left: 7px solid var(--signal);
+      background: var(--paper-deep);
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 5px;
+      font: 800 12px/1.3 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .warning {
+      color: #fff6df;
+      background: var(--signal-dark);
+      border-left-color: var(--ink);
+    }
+
+    .warning strong { color: #ffd0bc; }
+
+    .milestones {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: build-step;
+      border-top: 1px solid var(--ink);
+    }
+
+    .milestones li {
+      display: grid;
+      grid-template-columns: 56px minmax(150px, 0.42fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: baseline;
+      padding: 18px 8px;
+      border-bottom: 1px solid var(--line);
+      counter-increment: build-step;
+    }
+
+    .milestones li::before {
+      color: var(--signal);
+      content: "0" counter(build-step);
+      font: 900 20px/1 "Courier New", monospace;
+    }
+
+    .milestones strong {
+      font-family: Georgia, serif;
+      font-size: 18px;
+      font-weight: 400;
+    }
+
+    .milestones span { color: var(--muted); }
+
+    .gait {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .tripod {
+      padding: 22px;
+      border: 1px solid var(--ink);
+      background: var(--paper-deep);
+    }
+
+    .tripod-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      font: 700 12px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .feet {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .foot {
+      display: grid;
+      min-height: 65px;
+      place-items: center;
+      border: 1px solid var(--ink);
+      font: 800 13px/1 "Courier New", monospace;
+    }
+
+    .foot.active {
+      color: var(--paper);
+      background: var(--signal-dark);
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 20px 0 0;
+      padding: 20px;
+      color: #e8e4d8;
+      background: var(--night);
+      border-left: 7px solid var(--signal);
+      font: 13px/1.65 "Courier New", monospace;
+      white-space: pre;
+    }
+
+    .file-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+    }
+
+    .file-list a,
+    .file-list span {
+      min-width: 0;
+      padding: 13px 15px;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font: 13px/1.4 "Courier New", monospace;
+      text-decoration: none;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-list a:hover { color: var(--signal-dark); }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 28px 40px;
+      color: #bec2ba;
+      background: var(--night);
+      border-top: 8px solid var(--signal);
+      font: 12px/1.5 "Courier New", monospace;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .schematic { width: min(100%, 520px); margin: 0 auto; }
+      .layout { grid-template-columns: 1fr; }
+      nav {
+        position: static;
+        min-height: 0;
+        padding: 16px 24px;
+        border-right: 0;
+        border-bottom: 1px solid var(--ink);
+      }
+      nav .nav-title,
+      .nav-spec { display: none; }
+      nav a { display: inline-block; margin-right: 18px; border-bottom: 0; }
+      .flow { grid-template-columns: 1fr; }
+      .flow div { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .flow div:last-child { border-bottom: 0; }
+      .flow div::after { display: none; }
+    }
+
+    @media (max-width: 650px) {
+      .shell { width: 100%; border: 0; }
+      header { min-height: 0; padding: 22px 20px 36px; }
+      .topline { align-items: flex-start; gap: 20px; }
+      .topline > span:first-child { max-width: 180px; }
+      .hero { padding-top: 38px; }
+      h1 { font-size: clamp(58px, 24vw, 92px); }
+      main { padding: 12px 20px 48px; }
+      section { padding: 40px 0; }
+      .section-head { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; }
+      .number { font-size: 23px; }
+      .spec-grid,
+      .stack,
+      .gait,
+      .file-list { grid-template-columns: 1fr; }
+      .stack article { min-height: 0; border-right: 0; border-bottom: 1px solid var(--ink); }
+      .stack article:last-child { border-bottom: 0; }
+      .milestones li { grid-template-columns: 42px 1fr; }
+      .milestones li span { grid-column: 2; }
+      .parts,
+      .pinout { font-size: 12px; }
+      .parts th,
+      .parts td,
+      .pinout th,
+      .pinout td { padding: 10px 6px; }
+      footer { flex-direction: column; padding: 24px 20px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+
+    @media print {
+      html,
+      body { background: white; }
+      .shell { width: 100%; border: 0; }
+      header { min-height: auto; color: black; background: white; border-color: black; }
+      header::before,
+      .schematic,
+      nav { display: none; }
+      h1 span,
+      .number { color: black; }
+      .lede,
+      .topline { color: black; }
+      .hero,
+      .layout { display: block; }
+      main { padding: 0; }
+      section { break-inside: avoid; }
+      footer { color: black; background: white; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="topline">
+        <span>Field engineering document / Revision 0.1</span>
+        <span class="status">Prototype definition</span>
+      </div>
+      <div class="hero">
+        <div>
+          <h1>HEX<span>01</span></h1>
+          <p class="lede">A compact, lightweight six-legged robot built to learn leg kinematics, stable gait generation, and embedded motion control with hardware already on hand.</p>
+        </div>
+        <svg class="schematic" viewBox="0 0 520 380" role="img" aria-labelledby="hex-title hex-desc">
+          <title id="hex-title">Hexapod mechanical concept</title>
+          <desc id="hex-desc">Top-down technical drawing of a six-legged robot.</desc>
+          <g fill="none" stroke="#dad9cd" stroke-width="3">
+            <path d="M183 124 L337 124 L385 190 L337 256 L183 256 L135 190 Z" fill="#2d3934"/>
+            <path d="M180 148 L340 148 L360 190 L340 232 L180 232 L160 190 Z" stroke="#e24d2a"/>
+            <circle cx="192" cy="164" r="7" fill="#e24d2a" stroke="none"/>
+            <circle cx="260" cy="164" r="7" fill="#e24d2a" stroke="none"/>
+            <circle cx="328" cy="164" r="7" fill="#e24d2a" stroke="none"/>
+            <path d="M171 142 L111 91 L50 78 M140 190 L78 190 L29 153 M171 238 L111 289 L50 302"/>
+            <path d="M349 142 L409 91 L470 78 M380 190 L442 190 L491 153 M349 238 L409 289 L470 302"/>
+            <g fill="#e24d2a" stroke="none">
+              <circle cx="111" cy="91" r="6"/><circle cx="50" cy="78" r="6"/>
+              <circle cx="78" cy="190" r="6"/><circle cx="29" cy="153" r="6"/>
+              <circle cx="111" cy="289" r="6"/><circle cx="50" cy="302" r="6"/>
+              <circle cx="409" cy="91" r="6"/><circle cx="470" cy="78" r="6"/>
+              <circle cx="442" cy="190" r="6"/><circle cx="491" cy="153" r="6"/>
+              <circle cx="409" cy="289" r="6"/><circle cx="470" cy="302" r="6"/>
+            </g>
+            <path d="M260 97 V51 M253 59 L260 51 L267 59" stroke="#e24d2a"/>
+          </g>
+          <g fill="#dad9cd" font-family="Courier New, monospace" font-size="12">
+            <text x="237" y="42">FORWARD</text>
+            <text x="188" y="195">CONTROL + POWER DECK</text>
+            <text x="22" y="335">6 LEGS / 3 JOINTS EACH / 18 ACTUATORS</text>
+          </g>
+        </svg>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav aria-label="Document sections">
+        <div class="nav-title">Document index</div>
+        <a href="#mission">01 / Mission</a>
+        <a href="#architecture">02 / Architecture</a>
+        <a href="#hardware">03 / Hardware</a>
+        <a href="#power">04 / Power + wiring</a>
+        <a href="#control">05 / Motion control</a>
+        <a href="#roadmap">06 / Build sequence</a>
+        <a href="#safety">07 / Limits + safety</a>
+        <a href="#files">08 / Project files</a>
+        <div class="nav-spec">
+          PLATFORM: HEXAPOD<br>
+          MASS TARGET: MINIMUM<br>
+          ACTUATORS: 18 x SG90<br>
+          PRIMARY GAIT: TRIPOD<br>
+          CONTROL: PICO / ESP<br>
+          STATE: BRING-UP
+        </div>
+      </nav>
+
+      <main>
+        <section id="mission">
+          <div class="section-head">
+            <div class="number">01</div>
+            <div>
+              <h2>What we are building</h2>
+              <p class="section-summary">The first version prioritizes dependable motion and learning over payload, speed, or autonomy.</p>
+            </div>
+          </div>
+          <div class="manifesto">
+            HEX-01 is a 3-DOF-per-leg hexapod: six articulated legs, eighteen inexpensive SG90 servos, a light printed frame, and a microcontroller executing inverse kinematics and a statically stable tripod gait.
+          </div>
+          <div class="spec-grid" aria-label="Core specifications">
+            <div class="spec"><strong>Body plan</strong><span>Six legs, three rotary joints per leg</span></div>
+            <div class="spec"><strong>Actuation</strong><span>18 standard PWM SG90 micro servos</span></div>
+            <div class="spec"><strong>Locomotion</strong><span>Alternating tripod gait</span></div>
+            <div class="spec"><strong>Local control</strong><span>Pico or ESP32 running the motion loop</span></div>
+            <div class="spec"><strong>Servo interface</strong><span>Two addressable PCA9685 boards at 50 Hz</span></div>
+            <div class="spec"><strong>Later expansion</strong><span>Pi-based teleoperation, sensing, and vision</span></div>
+          </div>
+        </section>
+
+        <section id="architecture">
+          <div class="section-head">
+            <div class="number">02</div>
+            <div>
+              <h2>System architecture</h2>
+              <p class="section-summary">Keep timing-sensitive movement local. Add a Linux computer only when the walking platform is already reliable.</p>
+            </div>
+          </div>
+          <div class="stack">
+            <article>
+              <span class="tag">Build now</span>
+              <h3>Motion controller</h3>
+              <p>A Raspberry Pi Pico or ESP32 calculates foot trajectories, leg inverse kinematics, joint limits, and gait timing. It sends PWM values over I2C to both PCA9685 boards.</p>
+            </article>
+            <article>
+              <span class="tag">Add later</span>
+              <h3>High-level computer</h3>
+              <p>A Raspberry Pi can provide Wi-Fi control, telemetry, camera processing, navigation, and high-level commands such as velocity and turn rate. It does not generate individual servo pulses.</p>
+            </article>
+          </div>
+          <div class="flow" aria-label="Control signal flow">
+            <div><small>01 / INTENT</small>Joystick, radio, or planner</div>
+            <div><small>02 / COMMAND</small>Body velocity and stance</div>
+            <div><small>03 / MOTION</small>Gait phase and foot targets</div>
+            <div><small>04 / IK</small>18 joint angles</div>
+            <div><small>05 / OUTPUT</small>PCA9685 PWM to servos</div>
+          </div>
+        </section>
+
+        <section id="hardware">
+          <div class="section-head">
+            <div class="number">03</div>
+            <div>
+              <h2>Hardware manifest</h2>
+              <p class="section-summary">Use available boards and sensors, but keep the first walking prototype deliberately small and light.</p>
+            </div>
+          </div>
+          <table class="parts">
+            <thead>
+              <tr><th>Qty</th><th>Component</th><th>Role / selection note</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="qty">18</td><td>SG90 micro servo</td><td>Coxa, femur, and tibia actuation. Calibrate every unit; clone pulse ranges and usable travel vary.</td></tr>
+              <tr><td class="qty">2</td><td>PCA9685 16-channel driver</td><td>I2C PWM generation. Use addresses <code>0x40</code> and <code>0x41</code>.</td></tr>
+              <tr><td class="qty">1</td><td>Pico or ESP32</td><td>Real-time gait and leg-control processor. Start with one, not both.</td></tr>
+              <tr><td class="qty">1</td><td>Regulated 5 V supply</td><td>Dedicated high-current servo rail. Size from measured load with headroom.</td></tr>
+              <tr><td class="qty">1</td><td>Printed body and leg set</td><td>PLA prototype parts: body, left/right coxa, trochanter, femur, and tibia.</td></tr>
+              <tr><td class="qty">OPT</td><td>IMU</td><td>Body attitude measurement and later tilt compensation; not required for first gait.</td></tr>
+              <tr><td class="qty">OPT</td><td>INA219 / INA226</td><td>Whole-rail current monitoring for overload detection and diagnostics.</td></tr>
+              <tr><td class="qty">LATER</td><td>Raspberry Pi</td><td>Teleoperation, camera, logging, path planning, or ROS 2 integration.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="power">
+          <div class="section-head">
+            <div class="number">04</div>
+            <div>
+              <h2>Power and wiring</h2>
+              <p class="section-summary">The servo supply is electrically separate from logic power, but all grounds must be connected.</p>
+            </div>
+          </div>
+          <table class="pinout">
+            <thead>
+              <tr><th>Source</th><th>Destination</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Pico GP0</code></td><td><code>PCA SDA</code> on both boards</td><td>I2C data</td></tr>
+              <tr><td><code>Pico GP1</code></td><td><code>PCA SCL</code> on both boards</td><td>I2C clock</td></tr>
+              <tr><td><code>Pico 3V3</code></td><td><code>PCA VCC</code></td><td>PCA9685 logic power only</td></tr>
+              <tr><td><code>5 V supply +</code></td><td><code>PCA V+</code></td><td>Servo power rail</td></tr>
+              <tr><td><code>Supply GND</code></td><td><code>Pico GND + PCA GND</code></td><td>Shared signal reference</td></tr>
+              <tr><td><code>PCA #2 A0</code></td><td>Solder bridge closed</td><td>Changes address from <code>0x40</code> to <code>0x41</code></td></tr>
+            </tbody>
+          </table>
+          <div class="note warning">
+            <strong>Power rule</strong>
+            <p>Never power eighteen servos from a Pico, ESP32, Uno, or Raspberry Pi power pin. SG90 current varies widely by load and manufacturer; startup or stall events can reach several amps across the robot. Use a fused, regulated servo supply, substantial wiring, local bulk capacitance, and a common ground.</p>
+          </div>
+          <div class="note">
+            <strong>Bring-up rule</strong>
+            <p>Test one unmounted servo first. Establish conservative pulse limits before installing horns, then center each joint mechanically. A nominal <code>500-2400 us</code> range may drive some SG90 clones into their hard stops.</p>
+          </div>
+        </section>
+
+        <section id="control">
+          <div class="section-head">
+            <div class="number">05</div>
+            <div>
+              <h2>Motion control</h2>
+              <p class="section-summary">Walking is built as a chain from a desired body motion to safe pulse widths, with explicit calibration at the final step.</p>
+            </div>
+          </div>
+          <div class="gait">
+            <div class="tripod">
+              <div class="tripod-label"><span>Tripod A / stance</span><span>Phase 0</span></div>
+              <div class="feet">
+                <div class="foot active">LF</div><div class="foot">LM</div><div class="foot active">LR</div>
+                <div class="foot">RF</div><div class="foot active">RM</div><div class="foot">RR</div>
+              </div>
+            </div>
+            <div class="tripod">
+              <div class="tripod-label"><span>Tripod B / stance</span><span>Phase 1</span></div>
+              <div class="feet">
+                <div class="foot">LF</div><div class="foot active">LM</div><div class="foot">LR</div>
+                <div class="foot active">RF</div><div class="foot">RM</div><div class="foot active">RR</div>
+              </div>
+            </div>
+          </div>
+          <div class="spec-grid">
+            <div class="spec"><strong>Leg geometry</strong><span>Measure coxa, femur, and tibia pivot-to-pivot</span></div>
+            <div class="spec"><strong>Leg IK</strong><span>Convert each foot target (x, y, z) to three angles</span></div>
+            <div class="spec"><strong>Calibration</strong><span>Apply neutral offset, direction, and safe min/max per joint</span></div>
+          </div>
+          <div class="note">
+            <strong>Relaxing a servo</strong>
+            <p>Set the PCA9685 channel's <code>FULL_OFF</code> bit to stop its PWM signal. A typical analog SG90 then stops holding position and can move freely. Never relax a load-bearing leg unless the chassis is supported; it will collapse or shift suddenly.</p>
+          </div>
+          <pre><code>def relax_servo(self, channel):
+    """Disable one PCA9685 output using the FULL_OFF bit."""
+    reg = PCA9685_LED0_ON_L + 4 * channel
+    self.i2c.writeto_mem(
+        self.address, reg, bytes((0x00, 0x00, 0x00, 0x10))
+    )</code></pre>
+          <div class="note">
+            <strong>Stall detection</strong>
+            <p>SG90s provide no position or fault feedback. A current sensor on the shared servo rail can detect a sustained overload, but cannot identify one stalled servo while many are moving. Treat it as system protection and telemetry, not closed-loop joint feedback.</p>
+          </div>
+        </section>
+
+        <section id="roadmap">
+          <div class="section-head">
+            <div class="number">06</div>
+            <div>
+              <h2>Build sequence</h2>
+              <p class="section-summary">Each stage has a visible pass condition. Do not advance while mechanics bind or the power rail is unstable.</p>
+            </div>
+          </div>
+          <ol class="milestones">
+            <li><strong>Bench power</strong><span>Verify 5 V under load, common ground, both I2C addresses, and an emergency power disconnect.</span></li>
+            <li><strong>Single servo</strong><span>Find safe pulse limits and confirm PWM disable. Do this without a horn attached.</span></li>
+            <li><strong>Single leg</strong><span>Assemble three joints, record direction/offset data, and command repeatable foot positions with IK.</span></li>
+            <li><strong>Six-leg bring-up</strong><span>Center one joint at a time with the chassis elevated. Confirm channel-to-joint mapping.</span></li>
+            <li><strong>Static poses</strong><span>Stand, crouch, translate, and rotate the body slowly without lifting feet.</span></li>
+            <li><strong>Tripod gait</strong><span>Alternate three-leg support groups with low stride height and a wide stance.</span></li>
+            <li><strong>Feedback</strong><span>Add current monitoring, IMU attitude, foot-contact sensing, or obstacle ranging only as needed.</span></li>
+            <li><strong>High-level control</strong><span>Add the Raspberry Pi for remote commands, telemetry, vision, or autonomy.</span></li>
+          </ol>
+        </section>
+
+        <section id="safety">
+          <div class="section-head">
+            <div class="number">07</div>
+            <div>
+              <h2>Design limits</h2>
+              <p class="section-summary">SG90s make this an educational platform. Their limitations define the chassis and gait.</p>
+            </div>
+          </div>
+          <div class="stack">
+            <article>
+              <h3>Keep load paths short</h3>
+              <p>Short legs, a low body, light batteries, and minimal payload reduce joint torque. Avoid long printed lever arms and side loading on servo output shafts.</p>
+            </article>
+            <article>
+              <h3>Fail gently</h3>
+              <p>Clamp every joint command, start with low gait speed, elevate the chassis during first motion, and keep a physical servo-power disconnect within reach.</p>
+            </article>
+          </div>
+          <div class="note warning">
+            <strong>Do not trust commanded position</strong>
+            <p>A standard SG90 does not report its actual angle. It may be delayed, obstructed, unpowered, or stalled while software continues normally. Use conservative trajectories and mechanical clearance rather than assuming a command was completed.</p>
+          </div>
+        </section>
+
+        <section id="files">
+          <div class="section-head">
+            <div class="number">08</div>
+            <div>
+              <h2>Project files</h2>
+              <p class="section-summary">The repository currently contains mechanical models and an initial MicroPython PCA9685 test.</p>
+            </div>
+          </div>
+          <div class="file-list">
+            <a href="pca9685_bringup.py">pca9685_bringup.py</a>
+            <a href="servo_mapper.html">servo_mapper.html</a>
+            <a href="servo_mapper_pico.py">servo_mapper_pico.py</a>
+            <span>body.3mf</span>
+            <span>coxa - left.3mf</span>
+            <span>coxa - right.3mf</span>
+            <span>trochanter.3mf</span>
+            <span>femur.3mf</span>
+            <span>tibia.3mf</span>
+            <span>README.html</span>
+          </div>
+          <div class="note">
+            <strong>Servo assignment tool</strong>
+            <p>Install <code>servo_mapper_pico.py</code> on the Pico as <code>main.py</code>, serve this directory with <code>python3 -m http.server 8000</code>, then open <a href="servo_mapper.html"><code>http://localhost:8000/servo_mapper.html</code></a> in Chrome or Edge. The mapper identifies physical outputs with a narrow wiggle and exports the completed 18-joint map as JSON.</p>
+          </div>
+          <div class="note warning">
+            <strong>Current code status</strong>
+            <p><code>pca9685_bringup.py</code> initializes both PCA9685 boards unconditionally and loops over all 16 channels on each board. That is a 32-channel test, not an 18-servo test. Before connecting the complete robot, revise it to map exactly 18 named joints and only command channels that are physically populated.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      <span>HEX-01 / SG90 HEXAPOD DEVELOPMENT DOSSIER</span>
+      <span>Next gate: safe single-leg calibration and IK</span>
+    </footer>
+  </div>
+</body>
+</html>
