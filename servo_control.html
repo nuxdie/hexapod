@@ -610,13 +610,14 @@
       <div class="connection">
         <div id="connectionStatus" class="status">Disconnected</div>
         <button id="connectButton" class="button" type="button">Connect Pico</button>
+        <button id="centerAllButton" class="button" type="button" disabled>Center all</button>
         <button id="relaxAllButton" class="button danger" type="button" disabled>Relax all</button>
       </div>
     </header>
 
     <div class="safety">
       <strong>Live actuator control</strong>
-      <span>Only the selected output is driven. Selecting another joint relaxes the previous output.</span>
+      <span>Manual control drives one output; Center all deliberately energizes every mapped joint.</span>
       <label class="check"><input id="safetyCheck" type="checkbox"> Robot is elevated and clear</label>
     </div>
 
@@ -637,7 +638,7 @@
             <div class="body">HEX-01<br>CONTROL<br>DECK</div>
           </div>
         </div>
-        <div class="leg-key">H = hip / coxa &nbsp;&nbsp; K = knee / femur &nbsp;&nbsp; E = heel / tibia</div>
+        <div class="leg-key">C = coxa &nbsp;&nbsp; F = femur &nbsp;&nbsp; T = tibia</div>
         <div id="eventLog" class="event-log" aria-live="polite"><div>Console initialized. Loading map.</div></div>
       </main>
 
@@ -716,31 +717,34 @@
     "use strict";
 
     const JOINT_IDS = [
-      "lf.hip", "lf.knee", "lf.heel",
-      "lm.hip", "lm.knee", "lm.heel",
-      "lr.hip", "lr.knee", "lr.heel",
-      "rf.hip", "rf.knee", "rf.heel",
-      "rm.hip", "rm.knee", "rm.heel",
-      "rr.hip", "rr.knee", "rr.heel"
+      "lf.coxa", "lf.femur", "lf.tibia",
+      "lm.coxa", "lm.femur", "lm.tibia",
+      "lr.coxa", "lr.femur", "lr.tibia",
+      "rf.coxa", "rf.femur", "rf.tibia",
+      "rm.coxa", "rm.femur", "rm.tibia",
+      "rr.coxa", "rr.femur", "rr.tibia"
     ];
     const LEG_NAMES = {
       lf: "Left front", lm: "Left middle", lr: "Left rear",
       rf: "Right front", rm: "Right middle", rr: "Right rear"
     };
-    const JOINT_NAMES = { hip: "Hip", knee: "Knee", heel: "Heel" };
+    const JOINT_NAMES = { coxa: "Coxa", femur: "Femur", tibia: "Tibia" };
     const GRID_POSITIONS = {
-      "lf.heel": [1, 1], "lf.knee": [1, 2], "lf.hip": [1, 3],
-      "lm.heel": [2, 1], "lm.knee": [2, 2], "lm.hip": [2, 3],
-      "lr.heel": [3, 1], "lr.knee": [3, 2], "lr.hip": [3, 3],
-      "rf.hip": [1, 5], "rf.knee": [1, 6], "rf.heel": [1, 7],
-      "rm.hip": [2, 5], "rm.knee": [2, 6], "rm.heel": [2, 7],
-      "rr.hip": [3, 5], "rr.knee": [3, 6], "rr.heel": [3, 7]
+      "lf.tibia": [1, 1], "lf.femur": [1, 2], "lf.coxa": [1, 3],
+      "lm.tibia": [2, 1], "lm.femur": [2, 2], "lm.coxa": [2, 3],
+      "lr.tibia": [3, 1], "lr.femur": [3, 2], "lr.coxa": [3, 3],
+      "rf.coxa": [1, 5], "rf.femur": [1, 6], "rf.tibia": [1, 7],
+      "rm.coxa": [2, 5], "rm.femur": [2, 6], "rm.tibia": [2, 7],
+      "rr.coxa": [3, 5], "rr.femur": [3, 6], "rr.tibia": [3, 7]
     };
 
     const state = {
       mapping: {},
       selectedId: null,
-      activeId: null,
+      activeIds: new Set(),
+      holdAll: false,
+      centering: false,
+      centerCancel: false,
       mode: "position",
       port: null,
       reader: null,
@@ -763,6 +767,7 @@
     const elements = {
       connection: document.querySelector("#connectionStatus"),
       connect: document.querySelector("#connectButton"),
+      centerAll: document.querySelector("#centerAllButton"),
       relaxAll: document.querySelector("#relaxAllButton"),
       safety: document.querySelector("#safetyCheck"),
       mapState: document.querySelector("#mapState"),
@@ -823,7 +828,7 @@
         applyMap(await response.json(), "servo-map.json");
       } catch (error) {
         try {
-          const local = JSON.parse(localStorage.getItem("hex01-servo-map-v1"));
+          const local = JSON.parse(localStorage.getItem("hex01-servo-map-v2"));
           if (!local) throw new Error("no local mapper data");
           applyMap(local, "saved browser map");
         } catch (localError) {
@@ -867,10 +872,10 @@
         const joint = id.split(".")[1];
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `joint ${column < 4 ? "left" : "right"}${id === state.selectedId ? " selected" : ""}${id === state.activeId ? " active" : ""}`;
+        button.className = `joint ${column < 4 ? "left" : "right"}${id === state.selectedId ? " selected" : ""}${state.activeIds.has(id) ? " active" : ""}`;
         button.style.gridRow = row;
         button.style.gridColumn = column;
-        button.innerHTML = `${joint === "hip" ? "H" : joint === "knee" ? "K" : "E"}<small>${id.toUpperCase()} / B${servo.board + 1}:${servo.channel}</small>`;
+        button.innerHTML = `${joint === "coxa" ? "C" : joint === "femur" ? "F" : "T"}<small>${id.toUpperCase()} / B${servo.board + 1}:${servo.channel}</small>`;
         button.title = `${jointLabel(id)}; board ${servo.board + 1}, channel ${servo.channel}`;
         button.addEventListener("click", () => selectJoint(id));
         elements.robotGrid.append(button);
@@ -893,18 +898,31 @@
       elements.pulseValue.textContent = `${elements.pulse.value} us`;
       elements.speedValue.textContent = `${elements.speed.value} us`;
       elements.continuousCenterValue.textContent = `${elements.continuousCenter.value} us`;
-      elements.outputState.textContent = state.activeId ? `${jointLabel(state.activeId)} holding` : "Relaxed";
-      elements.outputState.classList.toggle("live", Boolean(state.activeId));
+      const activeCount = state.activeIds.size;
+      const onlyActive = activeCount === 1 ? [...state.activeIds][0] : null;
+      elements.outputState.textContent = activeCount === 0
+        ? "Relaxed"
+        : onlyActive
+          ? `${jointLabel(onlyActive)} holding`
+          : `${activeCount} joints holding`;
+      elements.outputState.classList.toggle("live", activeCount > 0);
       updateControls();
     }
 
     function updateControls() {
-      const canDrive = state.connected && elements.safety.checked && Boolean(state.selectedId);
-      elements.connect.disabled = state.connecting;
+      const canDrive = state.connected && !state.centering && elements.safety.checked && Boolean(state.selectedId);
+      elements.connect.disabled = state.connecting || state.centering;
       elements.connect.textContent = state.connecting ? "Waiting for Pico" : state.connected ? "Disconnect" : "Connect Pico";
-      elements.connection.textContent = state.connecting ? "Connecting" : state.connected ? "Firmware ready / PCA online" : "Disconnected";
+      elements.connection.textContent = state.connecting
+        ? "Connecting"
+        : state.centering
+          ? "Centering mapped joints"
+          : state.connected
+            ? "Firmware ready / PCA online"
+            : "Disconnected";
       elements.connection.classList.toggle("ready", state.connected);
       elements.relaxAll.disabled = !state.connected;
+      elements.centerAll.disabled = !(canDrive && Object.keys(state.mapping).length === 18);
       elements.sendPulse.disabled = !canDrive;
       elements.reverse.disabled = !canDrive;
       elements.stop.disabled = !canDrive;
@@ -917,7 +935,7 @@
       if (id === state.selectedId) return;
       const previousId = state.selectedId;
       cancelLivePulse();
-      if (previousId && state.connected) {
+      if (previousId && state.connected && !state.holdAll) {
         const relaxed = await relaxJoint(previousId);
         if (!relaxed) return;
       }
@@ -960,7 +978,8 @@
         await sendCommand({ cmd: "relax_all" });
         state.connected = true;
         state.connecting = false;
-        state.activeId = null;
+        state.activeIds.clear();
+        state.holdAll = false;
         render();
         addLog(`Connected to firmware v${hello.version}; all outputs relaxed.`, "ok");
         toast("Pico connected. All servo outputs are relaxed.");
@@ -987,7 +1006,8 @@
       state.connected = false;
       state.connecting = false;
       state.reading = false;
-      state.activeId = null;
+      state.activeIds.clear();
+      state.holdAll = false;
       state.drivingContinuous = false;
       for (const pending of state.pending.values()) {
         clearTimeout(pending.timer);
@@ -1083,16 +1103,21 @@
       if (!servo) return false;
       const pulse = Math.max(500, Math.min(2500, Math.round(pulseUs / 5) * 5));
       try {
-        if (state.activeId && state.activeId !== id) {
-          const relaxed = await relaxJoint(state.activeId);
-          if (!relaxed) throw new Error("previous output could not be relaxed");
+        if (!state.holdAll) {
+          for (const activeId of [...state.activeIds]) {
+            if (activeId === id) continue;
+            const relaxed = await relaxJoint(activeId);
+            if (!relaxed) throw new Error("previous output could not be relaxed");
+          }
         }
         await enqueue({ cmd: "set_pulse", board: servo.board, channel: servo.channel, pulse_us: pulse });
-        const activeChanged = state.activeId !== id;
-        state.activeId = id;
+        const activeChanged = !state.activeIds.has(id);
+        state.activeIds.add(id);
         if (options.quiet) {
           if (activeChanged) renderRobot();
-          elements.outputState.textContent = `${jointLabel(id)} holding`;
+          elements.outputState.textContent = state.activeIds.size === 1
+            ? `${jointLabel(id)} holding`
+            : `${state.activeIds.size} joints holding`;
           elements.outputState.classList.add("live");
         } else {
           state.pulseValues[id] = pulse;
@@ -1150,7 +1175,8 @@
       if (!servo || !state.connected) return false;
       try {
         await enqueue({ cmd: "relax", board: servo.board, channel: servo.channel });
-        if (state.activeId === id) state.activeId = null;
+        state.activeIds.delete(id);
+        if (state.activeIds.size === 0) state.holdAll = false;
         render();
         addLog(`${id} relaxed.`);
         return true;
@@ -1161,13 +1187,61 @@
       }
     }
 
+    async function centerAllJoints() {
+      if (!state.connected || !elements.safety.checked || Object.keys(state.mapping).length !== 18) return;
+      const confirmed = window.confirm(
+        "Center and hold all 18 mapped joints? The chassis must be elevated and the servo supply must handle the combined current."
+      );
+      if (!confirmed) return;
+
+      cancelLivePulse();
+      state.centering = true;
+      state.centerCancel = false;
+      state.holdAll = true;
+      updateControls();
+
+      try {
+        await enqueue({ cmd: "relax_all" });
+        state.activeIds.clear();
+        render();
+
+        for (const id of JOINT_IDS) {
+          if (state.centerCancel) throw new Error("centering cancelled");
+          const servo = state.mapping[id];
+          const pulse = Math.max(500, Math.min(2500, Math.round(servo.centerUs / 5) * 5));
+          await enqueue({ cmd: "set_pulse", board: servo.board, channel: servo.channel, pulse_us: pulse });
+          state.activeIds.add(id);
+          state.pulseValues[id] = pulse;
+          renderRobot();
+          await delay(70);
+        }
+
+        render();
+        addLog("All 18 joints moved to their mapped centers and are holding.", "ok");
+        toast("All mapped joints are centered and holding.");
+      } catch (error) {
+        await enqueue({ cmd: "relax_all" }).catch(() => {});
+        state.activeIds.clear();
+        state.holdAll = false;
+        render();
+        if (!state.centerCancel) toast(`Center all failed: ${error.message}`);
+        addLog(`Center all stopped: ${error.message}`, state.centerCancel ? "" : "error");
+      } finally {
+        state.centering = false;
+        state.centerCancel = false;
+        updateControls();
+      }
+    }
+
     async function relaxAll() {
       cancelLivePulse();
       if (!state.connected) return;
+      if (state.centering) state.centerCancel = true;
       state.drivingContinuous = false;
       try {
         await enqueue({ cmd: "relax_all" });
-        state.activeId = null;
+        state.activeIds.clear();
+        state.holdAll = false;
         render();
         addLog("All outputs relaxed.", "ok");
       } catch (error) {
@@ -1221,6 +1295,7 @@
     document.querySelectorAll(".mode-tab").forEach((tab) => tab.addEventListener("click", () => setMode(tab.dataset.mode)));
     document.querySelectorAll(".nudge[data-delta]").forEach((button) => button.addEventListener("click", () => nudge(Number(button.dataset.delta))));
     elements.connect.addEventListener("click", connectSerial);
+    elements.centerAll.addEventListener("click", centerAllJoints);
     elements.relaxAll.addEventListener("click", relaxAll);
     elements.relaxSelected.addEventListener("click", () => state.selectedId && relaxJoint(state.selectedId));
     elements.safety.addEventListener("change", () => {

@@ -763,8 +763,8 @@
               <tr><th>Qty</th><th>Component</th><th>Role / selection note</th></tr>
             </thead>
             <tbody>
-              <tr><td class="qty">12</td><td>180-degree positional servo</td><td>Hip/coxa and knee/femur actuation. Calibrate safe mechanical limits per joint.</td></tr>
-              <tr><td class="qty">6</td><td>360-degree positional servo</td><td>Heel/tibia actuation. Pulse width selects an absolute angle and the servo uses the shortest path to reach it.</td></tr>
+              <tr><td class="qty">12</td><td>180-degree positional servo</td><td>Coxa and femur actuation. Calibrate safe mechanical limits per joint.</td></tr>
+              <tr><td class="qty">6</td><td>360-degree positional servo</td><td>Tibia actuation. Pulse width selects an absolute angle and the servo uses the shortest path to reach it.</td></tr>
               <tr><td class="qty">2</td><td>PCA9685 16-channel driver</td><td>I2C PWM generation. Use addresses <code>0x40</code> and <code>0x41</code>.</td></tr>
               <tr><td class="qty">1</td><td>Pico or ESP32</td><td>Real-time gait and leg-control processor. Start with one, not both.</td></tr>
               <tr><td class="qty">1</td><td>Regulated 5 V supply</td><td>Dedicated high-current servo rail. Size from measured load with headroom.</td></tr>
@@ -924,7 +924,7 @@
           </div>
           <div class="note">
             <strong>Manual servo control</strong>
-            <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control one mapped joint at a time. Position mode supports live slider movement over <code>500-2500 us</code>; commands are coalesced to avoid a serial backlog. Relax disables PWM on the selected output.</p>
+            <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control mapped joints. Position mode supports live slider movement over <code>500-2500 us</code>; commands are coalesced to avoid a serial backlog. Center all moves the 18 joints sequentially to reduce the current step, while Relax all disables every PWM output.</p>
           </div>
           <div class="note warning">
             <strong>Current code status</strong>

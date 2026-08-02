@@ -712,7 +712,7 @@
         <div class="robot-wrap">
           <svg id="robot" viewBox="0 0 700 600" role="img" aria-labelledby="robotTitle robotDesc">
             <title id="robotTitle">Clickable top-view hexapod joint schematic</title>
-            <desc id="robotDesc">Six legs with clickable hip, knee, and heel joints for assigning physical servo channels.</desc>
+            <desc id="robotDesc">Six legs with clickable coxa, femur, and tibia joints for assigning physical servo channels.</desc>
             <defs>
               <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#a7351d"/>
@@ -740,32 +740,32 @@
             <text class="leg-label" x="635" y="270">RM</text>
             <text class="leg-label" x="609" y="535">RR</text>
 
-            <g class="joint" data-joint="lf.hip" tabindex="0" role="button" aria-label="Left front hip"><circle cx="260" cy="202" r="22"/><text x="260" y="202">H</text><title>Left front / Hip (coxa)</title></g>
-            <g class="joint" data-joint="lf.knee" tabindex="0" role="button" aria-label="Left front knee"><circle cx="165" cy="143" r="22"/><text x="165" y="143">K</text><title>Left front / Knee (femur)</title></g>
-            <g class="joint" data-joint="lf.heel" tabindex="0" role="button" aria-label="Left front heel"><circle cx="68" cy="105" r="22"/><text x="68" y="105">E</text><title>Left front / Heel (tibia)</title></g>
+            <g class="joint" data-joint="lf.coxa" tabindex="0" role="button" aria-label="Left front coxa"><circle cx="260" cy="202" r="22"/><text x="260" y="202">C</text><title>Left front / Coxa</title></g>
+            <g class="joint" data-joint="lf.femur" tabindex="0" role="button" aria-label="Left front femur"><circle cx="165" cy="143" r="22"/><text x="165" y="143">F</text><title>Left front / Femur</title></g>
+            <g class="joint" data-joint="lf.tibia" tabindex="0" role="button" aria-label="Left front tibia"><circle cx="68" cy="105" r="22"/><text x="68" y="105">T</text><title>Left front / Tibia</title></g>
 
-            <g class="joint" data-joint="lm.hip" tabindex="0" role="button" aria-label="Left middle hip"><circle cx="245" cy="300" r="22"/><text x="245" y="300">H</text><title>Left middle / Hip (coxa)</title></g>
-            <g class="joint" data-joint="lm.knee" tabindex="0" role="button" aria-label="Left middle knee"><circle cx="148" cy="300" r="22"/><text x="148" y="300">K</text><title>Left middle / Knee (femur)</title></g>
-            <g class="joint" data-joint="lm.heel" tabindex="0" role="button" aria-label="Left middle heel"><circle cx="50" cy="300" r="22"/><text x="50" y="300">E</text><title>Left middle / Heel (tibia)</title></g>
+            <g class="joint" data-joint="lm.coxa" tabindex="0" role="button" aria-label="Left middle coxa"><circle cx="245" cy="300" r="22"/><text x="245" y="300">C</text><title>Left middle / Coxa</title></g>
+            <g class="joint" data-joint="lm.femur" tabindex="0" role="button" aria-label="Left middle femur"><circle cx="148" cy="300" r="22"/><text x="148" y="300">F</text><title>Left middle / Femur</title></g>
+            <g class="joint" data-joint="lm.tibia" tabindex="0" role="button" aria-label="Left middle tibia"><circle cx="50" cy="300" r="22"/><text x="50" y="300">T</text><title>Left middle / Tibia</title></g>
 
-            <g class="joint" data-joint="lr.hip" tabindex="0" role="button" aria-label="Left rear hip"><circle cx="260" cy="398" r="22"/><text x="260" y="398">H</text><title>Left rear / Hip (coxa)</title></g>
-            <g class="joint" data-joint="lr.knee" tabindex="0" role="button" aria-label="Left rear knee"><circle cx="165" cy="457" r="22"/><text x="165" y="457">K</text><title>Left rear / Knee (femur)</title></g>
-            <g class="joint" data-joint="lr.heel" tabindex="0" role="button" aria-label="Left rear heel"><circle cx="68" cy="495" r="22"/><text x="68" y="495">E</text><title>Left rear / Heel (tibia)</title></g>
+            <g class="joint" data-joint="lr.coxa" tabindex="0" role="button" aria-label="Left rear coxa"><circle cx="260" cy="398" r="22"/><text x="260" y="398">C</text><title>Left rear / Coxa</title></g>
+            <g class="joint" data-joint="lr.femur" tabindex="0" role="button" aria-label="Left rear femur"><circle cx="165" cy="457" r="22"/><text x="165" y="457">F</text><title>Left rear / Femur</title></g>
+            <g class="joint" data-joint="lr.tibia" tabindex="0" role="button" aria-label="Left rear tibia"><circle cx="68" cy="495" r="22"/><text x="68" y="495">T</text><title>Left rear / Tibia</title></g>
 
-            <g class="joint" data-joint="rf.hip" tabindex="0" role="button" aria-label="Right front hip"><circle cx="440" cy="202" r="22"/><text x="440" y="202">H</text><title>Right front / Hip (coxa)</title></g>
-            <g class="joint" data-joint="rf.knee" tabindex="0" role="button" aria-label="Right front knee"><circle cx="535" cy="143" r="22"/><text x="535" y="143">K</text><title>Right front / Knee (femur)</title></g>
-            <g class="joint" data-joint="rf.heel" tabindex="0" role="button" aria-label="Right front heel"><circle cx="632" cy="105" r="22"/><text x="632" y="105">E</text><title>Right front / Heel (tibia)</title></g>
+            <g class="joint" data-joint="rf.coxa" tabindex="0" role="button" aria-label="Right front coxa"><circle cx="440" cy="202" r="22"/><text x="440" y="202">C</text><title>Right front / Coxa</title></g>
+            <g class="joint" data-joint="rf.femur" tabindex="0" role="button" aria-label="Right front femur"><circle cx="535" cy="143" r="22"/><text x="535" y="143">F</text><title>Right front / Femur</title></g>
+            <g class="joint" data-joint="rf.tibia" tabindex="0" role="button" aria-label="Right front tibia"><circle cx="632" cy="105" r="22"/><text x="632" y="105">T</text><title>Right front / Tibia</title></g>
 
-            <g class="joint" data-joint="rm.hip" tabindex="0" role="button" aria-label="Right middle hip"><circle cx="455" cy="300" r="22"/><text x="455" y="300">H</text><title>Right middle / Hip (coxa)</title></g>
-            <g class="joint" data-joint="rm.knee" tabindex="0" role="button" aria-label="Right middle knee"><circle cx="552" cy="300" r="22"/><text x="552" y="300">K</text><title>Right middle / Knee (femur)</title></g>
-            <g class="joint" data-joint="rm.heel" tabindex="0" role="button" aria-label="Right middle heel"><circle cx="650" cy="300" r="22"/><text x="650" y="300">E</text><title>Right middle / Heel (tibia)</title></g>
+            <g class="joint" data-joint="rm.coxa" tabindex="0" role="button" aria-label="Right middle coxa"><circle cx="455" cy="300" r="22"/><text x="455" y="300">C</text><title>Right middle / Coxa</title></g>
+            <g class="joint" data-joint="rm.femur" tabindex="0" role="button" aria-label="Right middle femur"><circle cx="552" cy="300" r="22"/><text x="552" y="300">F</text><title>Right middle / Femur</title></g>
+            <g class="joint" data-joint="rm.tibia" tabindex="0" role="button" aria-label="Right middle tibia"><circle cx="650" cy="300" r="22"/><text x="650" y="300">T</text><title>Right middle / Tibia</title></g>
 
-            <g class="joint" data-joint="rr.hip" tabindex="0" role="button" aria-label="Right rear hip"><circle cx="440" cy="398" r="22"/><text x="440" y="398">H</text><title>Right rear / Hip (coxa)</title></g>
-            <g class="joint" data-joint="rr.knee" tabindex="0" role="button" aria-label="Right rear knee"><circle cx="535" cy="457" r="22"/><text x="535" y="457">K</text><title>Right rear / Knee (femur)</title></g>
-            <g class="joint" data-joint="rr.heel" tabindex="0" role="button" aria-label="Right rear heel"><circle cx="632" cy="495" r="22"/><text x="632" y="495">E</text><title>Right rear / Heel (tibia)</title></g>
+            <g class="joint" data-joint="rr.coxa" tabindex="0" role="button" aria-label="Right rear coxa"><circle cx="440" cy="398" r="22"/><text x="440" y="398">C</text><title>Right rear / Coxa</title></g>
+            <g class="joint" data-joint="rr.femur" tabindex="0" role="button" aria-label="Right rear femur"><circle cx="535" cy="457" r="22"/><text x="535" y="457">F</text><title>Right rear / Femur</title></g>
+            <g class="joint" data-joint="rr.tibia" tabindex="0" role="button" aria-label="Right rear tibia"><circle cx="632" cy="495" r="22"/><text x="632" y="495">T</text><title>Right rear / Tibia</title></g>
           </svg>
         </div>
-        <div class="legend"><span><b>H</b> Hip / coxa</span><span><b>K</b> Knee / femur</span><span><b>E</b> Heel / tibia</span><span>Green = assigned</span></div>
+        <div class="legend"><span><b>C</b> Coxa</span><span><b>F</b> Femur</span><span><b>T</b> Tibia</span><span>Green = assigned</span></div>
       </main>
 
       <aside class="inspector">
@@ -822,20 +822,20 @@
   <script>
     "use strict";
 
-    const STORAGE_KEY = "hex01-servo-map-v1";
+    const STORAGE_KEY = "hex01-servo-map-v2";
     const JOINT_IDS = [
-      "lf.hip", "lf.knee", "lf.heel",
-      "lm.hip", "lm.knee", "lm.heel",
-      "lr.hip", "lr.knee", "lr.heel",
-      "rf.hip", "rf.knee", "rf.heel",
-      "rm.hip", "rm.knee", "rm.heel",
-      "rr.hip", "rr.knee", "rr.heel"
+      "lf.coxa", "lf.femur", "lf.tibia",
+      "lm.coxa", "lm.femur", "lm.tibia",
+      "lr.coxa", "lr.femur", "lr.tibia",
+      "rf.coxa", "rf.femur", "rf.tibia",
+      "rm.coxa", "rm.femur", "rm.tibia",
+      "rr.coxa", "rr.femur", "rr.tibia"
     ];
     const LEG_NAMES = {
       lf: "Left front", lm: "Left middle", lr: "Left rear",
       rf: "Right front", rm: "Right middle", rr: "Right rear"
     };
-    const JOINT_NAMES = { hip: "Hip", knee: "Knee", heel: "Heel" };
+    const JOINT_NAMES = { coxa: "Coxa", femur: "Femur", tibia: "Tibia" };
 
     const state = {
       port: null,
@@ -912,7 +912,7 @@
     }
 
     function saveMapping() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, assignments: state.mapping }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, assignments: state.mapping }));
     }
 
     function physicalId(board, channel) {
@@ -1270,7 +1270,7 @@
       }
       const output = {
         format: "hex01-servo-map",
-        version: 1,
+        version: 2,
         generated_at: new Date().toISOString(),
         assignments
       };
