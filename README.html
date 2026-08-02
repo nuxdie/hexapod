@@ -641,6 +641,7 @@
       <div class="tool-menu" aria-label="Project tools">
         <a class="active" href="README.html" aria-current="page">Build dossier</a>
         <a href="servo_mapper.html">Servo mapper</a>
+        <a href="servo_calibrator.html">Calibration</a>
         <a href="servo_control.html">Manual control</a>
       </div>
       <div class="hero">
@@ -907,6 +908,7 @@
           <div class="file-list">
             <a href="pca9685_bringup.py">pca9685_bringup.py</a>
             <a href="servo_mapper.html">servo_mapper.html</a>
+            <a href="servo_calibrator.html">servo_calibrator.html</a>
             <a href="servo_control.html">servo_control.html</a>
             <a href="servo_mapper_pico.py">servo_mapper_pico.py</a>
             <a href="servo-map.json">servo-map.json</a>
@@ -921,6 +923,10 @@
           <div class="note">
             <strong>Servo assignment tool</strong>
             <p>Install <code>servo_mapper_pico.py</code> on the Pico as <code>main.py</code>, serve this directory with <code>python3 -m http.server 8000</code>, then open <a href="servo_mapper.html"><code>http://localhost:8000/servo_mapper.html</code></a> in Chrome or Edge. The mapper identifies physical outputs with a narrow wiggle and exports the completed 18-joint map as JSON.</p>
+          </div>
+          <div class="note">
+            <strong>Servo calibration</strong>
+            <p>Open <a href="servo_calibrator.html"><code>http://localhost:8000/servo_calibrator.html</code></a> to find and capture each joint's safe minimum, neutral center, and maximum pulse. Calibration drafts persist in the browser; saving produces version 3 of <code>servo-map.json</code> with per-joint limits that manual control enforces automatically.</p>
           </div>
           <div class="note">
             <strong>Manual servo control</strong>

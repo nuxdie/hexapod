@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Calibrate safe pulse limits for every mapped HEX-01 servo.">
+  <title>HEX-01 Servo Calibration</title>
+  <style>
+    :root {
+      --ink: #18201d;
+      --dark: #202925;
+      --dark-2: #2b3631;
+      --paper: #ebe6d9;
+      --paper-2: #d9d3c5;
+      --line: #85867d;
+      --muted: #606862;
+      --signal: #eb5732;
+      --signal-dark: #9d321d;
+      --green: #9fbe70;
+      --amber: #e9b34f;
+      --blueprint: #305962;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(235, 230, 217, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(235, 230, 217, 0.035) 1px, transparent 1px),
+        var(--dark);
+      background-size: 30px 30px;
+      font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+    }
+
+    button,
+    input,
+    select { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid var(--amber);
+      outline-offset: 2px;
+    }
+
+    .app {
+      width: min(100%, 1480px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 0 80px rgba(0, 0, 0, 0.34);
+    }
+
+    header {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      color: var(--paper);
+      background: var(--ink);
+      border-bottom: 6px solid var(--signal);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 15px 24px;
+    }
+
+    .mark {
+      color: var(--signal);
+      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    h1,
+    h2,
+    h3,
+    p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 3px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 400;
+    }
+
+    .subtitle {
+      color: #acb3ae;
+      font: 11px/1.3 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tool-menu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .tool-menu a {
+      padding: 4px 7px;
+      color: #b8beb9;
+      border: 1px solid #4c5651;
+      border-radius: 2px;
+      font: 700 9px/1.2 "Courier New", monospace;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .tool-menu a:hover,
+    .tool-menu a.active { color: #fff4df; border-color: var(--signal); background: var(--signal-dark); }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-left: 1px solid #48504c;
+    }
+
+    .connection-state {
+      min-width: 135px;
+      color: #aeb5b0;
+      font: 700 11px/1.3 "Courier New", monospace;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .connection-state.ready { color: #d9eac1; }
+
+    .button {
+      min-height: 39px;
+      padding: 8px 13px;
+      color: var(--paper);
+      background: var(--signal-dark);
+      border: 1px solid #ef795d;
+      border-radius: 3px;
+      font: 800 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .button:hover:not(:disabled) { background: var(--signal); }
+    .button:disabled { cursor: not-allowed; opacity: 0.38; }
+
+    .button.secondary {
+      color: var(--ink);
+      background: transparent;
+      border-color: var(--line);
+    }
+
+    .button.secondary:hover:not(:disabled) { color: var(--paper); background: var(--ink); }
+    .button.danger { background: #742418; border-color: #bd513a; }
+
+    .safety {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 11px 24px;
+      color: #352a1b;
+      background: #e8c57e;
+      border-bottom: 1px solid #8a6937;
+      font-size: 13px;
+    }
+
+    .safety strong {
+      font: 900 11px/1.3 "Courier New", monospace;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: 800 11px/1.3 "Courier New", monospace;
+    }
+
+    .check input { width: 18px; height: 18px; margin: 0; accent-color: var(--signal-dark); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 290px minmax(520px, 1fr) 310px;
+      min-height: calc(100vh - 142px);
+    }
+
+    aside,
+    main { min-width: 0; }
+
+    .roster {
+      padding: 22px 18px 30px;
+      color: var(--paper);
+      background: var(--dark);
+      border-right: 1px solid var(--ink);
+    }
+
+    main { padding: 22px 26px 38px; }
+
+    .record {
+      padding: 22px 18px 30px;
+      background: var(--paper-2);
+      border-left: 1px solid var(--ink);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 17px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid currentColor;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      font-weight: 400;
+    }
+
+    .panel-head span {
+      color: var(--muted);
+      font: 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .roster .panel-head span { color: #aeb5b0; }
+
+    .progress {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      color: #d8ddd9;
+      font: 700 11px/1.3 "Courier New", monospace;
+    }
+
+    .progress-track {
+      grid-column: 1 / -1;
+      height: 7px;
+      overflow: hidden;
+      background: #4c5752;
+      border: 1px solid #6e7973;
+    }
+
+    .progress-track span { display: block; width: 0; height: 100%; background: var(--green); }
+
+    .leg-group { margin-bottom: 17px; }
+
+    .leg-title {
+      margin-bottom: 6px;
+      color: #aeb5b0;
+      font: 800 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .joint-list { display: grid; gap: 4px; }
+
+    .joint-button {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 37px;
+      padding: 7px 9px;
+      color: #e2e4df;
+      background: #303b36;
+      border: 1px solid #56615b;
+      border-radius: 2px;
+      text-align: left;
+    }
+
+    .joint-button:hover { border-color: var(--amber); }
+    .joint-button.selected { color: #fff8e8; background: var(--signal-dark); border-color: #f17f61; }
+    .joint-button.calibrated:not(.selected) { color: var(--ink); background: var(--green); border-color: #d5e6bd; }
+
+    .joint-button strong { font: 800 11px/1.2 "Courier New", monospace; text-transform: uppercase; }
+    .joint-button small { font: 9px/1 "Courier New", monospace; }
+
+    .selected-card {
+      margin-bottom: 22px;
+      padding: 17px 19px;
+      color: var(--paper);
+      background: var(--dark-2);
+      border-top: 5px solid var(--signal);
+    }
+
+    .selected-card small {
+      display: block;
+      margin-bottom: 6px;
+      color: #aeb5b0;
+      font: 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .selected-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-family: Georgia, serif;
+      font-size: 27px;
+      font-weight: 400;
+    }
+
+    .selected-card span { color: #c1c6c2; font: 11px/1.4 "Courier New", monospace; }
+
+    .procedure {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-bottom: 24px;
+      border: 1px solid var(--ink);
+    }
+
+    .procedure div {
+      min-height: 72px;
+      padding: 10px;
+      border-right: 1px solid var(--ink);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .procedure div:last-child { border-right: 0; }
+    .procedure b { display: block; margin-bottom: 3px; color: var(--signal-dark); font: 900 10px/1.2 "Courier New", monospace; }
+
+    .live-control {
+      margin-bottom: 22px;
+      padding: 19px;
+      background: #d8d1c1;
+      border: 1px solid var(--ink);
+    }
+
+    .field { margin-bottom: 17px; }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      font: 800 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .field output { color: var(--signal-dark); font-size: 14px; }
+    input[type="range"] { width: 100%; accent-color: var(--signal-dark); }
+
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font: 9px/1 "Courier New", monospace;
+    }
+
+    .nudge-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .nudge {
+      min-height: 35px;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--line);
+      font: 800 10px/1 "Courier New", monospace;
+    }
+
+    .nudge:hover:not(:disabled) { color: var(--paper); background: var(--ink); }
+    .nudge:disabled { cursor: not-allowed; opacity: 0.4; }
+
+    .capture-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .capture {
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--ink);
+    }
+
+    .capture h3 {
+      margin-bottom: 8px;
+      font: 900 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .capture output {
+      display: block;
+      margin-bottom: 11px;
+      color: var(--blueprint);
+      font: 900 24px/1 "Courier New", monospace;
+    }
+
+    .capture-actions { display: grid; gap: 5px; }
+    .capture-actions .button { min-height: 34px; padding: 6px; font-size: 9px; }
+
+    .warning {
+      margin: 20px 0 0;
+      padding: 12px 14px;
+      background: #c8c0af;
+      border-left: 5px solid var(--signal-dark);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .warning strong { display: block; margin-bottom: 3px; font: 900 10px/1.2 "Courier New", monospace; text-transform: uppercase; }
+
+    .record-field { margin-bottom: 17px; }
+
+    .record-field label {
+      display: block;
+      margin-bottom: 7px;
+      font: 800 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    select {
+      width: 100%;
+      min-height: 39px;
+      padding: 7px 9px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+    }
+
+    .validity {
+      margin: 20px 0;
+      padding: 13px;
+      color: #4b2d19;
+      background: #e5bd73;
+      border-left: 5px solid var(--signal-dark);
+      font: 700 11px/1.45 "Courier New", monospace;
+    }
+
+    .validity.valid { color: #263818; background: #bdd494; border-left-color: #587632; }
+
+    .stack { display: grid; gap: 8px; }
+
+    .file-label {
+      display: grid;
+      min-height: 39px;
+      place-items: center;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      font: 800 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .file-label:hover { color: var(--paper); background: var(--ink); }
+    .file-label input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+    .log {
+      height: 100px;
+      margin-top: 20px;
+      padding: 9px 11px;
+      overflow: auto;
+      color: #bdc4bf;
+      background: var(--ink);
+      font: 9px/1.5 "Courier New", monospace;
+    }
+
+    .log div { border-bottom: 1px solid #303934; }
+    .log .error { color: #ff9b82; }
+    .log .ok { color: #cce7a7; }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      right: 22px;
+      bottom: 22px;
+      max-width: min(420px, calc(100% - 44px));
+      padding: 14px 17px;
+      color: var(--paper);
+      background: var(--ink);
+      border-left: 6px solid var(--signal);
+      box-shadow: 8px 9px 0 rgba(0, 0, 0, 0.24);
+      font: 12px/1.45 "Courier New", monospace;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 260px minmax(500px, 1fr); }
+      .record { grid-column: 1 / -1; border-top: 1px solid var(--ink); border-left: 0; }
+      .record { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      .record .panel-head { grid-column: 1 / -1; margin-bottom: 0; }
+      .record .log { margin-top: 0; }
+    }
+
+    @media (max-width: 780px) {
+      header { display: block; }
+      .connection { flex-wrap: wrap; border-top: 1px solid #48504c; border-left: 0; }
+      .connection-state { min-width: 0; text-align: left; }
+      .safety { grid-template-columns: 1fr; gap: 6px; }
+      .workspace { display: block; }
+      .roster { border-right: 0; }
+      .joint-list { grid-template-columns: repeat(3, 1fr); }
+      main { padding: 20px 14px 32px; }
+      .procedure,
+      .capture-grid { grid-template-columns: 1fr; }
+      .procedure div { min-height: 0; border-right: 0; border-bottom: 1px solid var(--ink); }
+      .procedure div:last-child { border-bottom: 0; }
+      .record { display: block; }
+      .record > * { margin-bottom: 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="mark">HEX-01</div>
+        <div>
+          <h1>Servo calibration bench</h1>
+          <div class="subtitle">Per-joint safe pulse envelope / config v3</div>
+          <div class="tool-menu" aria-label="Project tools">
+            <a href="README.html">Build dossier</a>
+            <a href="servo_mapper.html">Servo mapper</a>
+            <a class="active" href="servo_calibrator.html" aria-current="page">Calibration</a>
+            <a href="servo_control.html">Manual control</a>
+          </div>
+        </div>
+      </div>
+      <div class="connection">
+        <div id="connectionState" class="connection-state">Disconnected</div>
+        <button id="connectButton" class="button" type="button">Connect Pico</button>
+        <button id="relaxButton" class="button danger" type="button" disabled>Relax all</button>
+      </div>
+    </header>
+
+    <div class="safety">
+      <strong>Endpoint calibration</strong>
+      <span>Move slowly. Stop and back away immediately if a servo buzzes, stalls, or loads a mechanical stop.</span>
+      <label class="check"><input id="safetyCheck" type="checkbox"> Robot is elevated and clear</label>
+    </div>
+
+    <div class="workspace">
+      <aside class="roster">
+        <div class="panel-head">
+          <h2>Joint roster</h2>
+          <span>18 mapped</span>
+        </div>
+        <div class="progress">
+          <span>Calibration progress</span>
+          <strong id="progressText">0 / 18</strong>
+          <div class="progress-track"><span id="progressBar"></span></div>
+        </div>
+        <div id="jointRoster"></div>
+      </aside>
+
+      <main>
+        <div class="panel-head">
+          <h2>Find the safe envelope</h2>
+          <span>One energized output at a time</span>
+        </div>
+        <div class="selected-card">
+          <small>Selected joint</small>
+          <strong id="selectedName">None selected</strong>
+          <span id="selectedAddress">Load a map and select a joint.</span>
+        </div>
+
+        <div class="procedure">
+          <div><b>01 / MINIMUM</b>Approach the low-pulse endpoint, back off, then capture it.</div>
+          <div><b>02 / MAXIMUM</b>Repeat at the high-pulse endpoint without forcing the mechanism.</div>
+          <div><b>03 / CENTER</b>Place the joint in its intended neutral pose and capture center.</div>
+          <div><b>04 / CONFIRM</b>Test all three values, then mark the joint calibrated.</div>
+        </div>
+
+        <div class="live-control">
+          <div class="field">
+            <label for="pulseSlider">Live test pulse <output id="pulseValue">1500 us</output></label>
+            <input id="pulseSlider" type="range" min="500" max="2500" step="5" value="1500">
+            <div class="range-labels"><span>500 us</span><span>drag sends at max 15 Hz</span><span>2500 us</span></div>
+          </div>
+          <div class="nudge-row">
+            <button class="nudge" data-delta="-25" type="button">-25</button>
+            <button class="nudge" data-delta="-5" type="button">-5</button>
+            <button id="sendButton" class="nudge" type="button">Send</button>
+            <button class="nudge" data-delta="5" type="button">+5</button>
+            <button class="nudge" data-delta="25" type="button">+25</button>
+          </div>
+        </div>
+
+        <div class="capture-grid">
+          <article class="capture">
+            <h3>Minimum pulse</h3>
+            <output id="minValue">500 us</output>
+            <div class="capture-actions">
+              <button class="button" data-capture="min" type="button">Capture current</button>
+              <button class="button secondary" data-test="min" type="button">Test minimum</button>
+            </div>
+          </article>
+          <article class="capture">
+            <h3>Neutral center</h3>
+            <output id="centerValue">1500 us</output>
+            <div class="capture-actions">
+              <button class="button" data-capture="center" type="button">Capture current</button>
+              <button class="button secondary" data-test="center" type="button">Test center</button>
+            </div>
+          </article>
+          <article class="capture">
+            <h3>Maximum pulse</h3>
+            <output id="maxValue">2500 us</output>
+            <div class="capture-actions">
+              <button class="button" data-capture="max" type="button">Capture current</button>
+              <button class="button secondary" data-test="max" type="button">Test maximum</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="warning">
+          <strong>Safe limit rule</strong>
+          For a mechanically limited servo, capture a value 20-50 us back from the first sign of buzzing or hard-stop contact. A 360-degree positional servo may wrap instead of hitting a stop; use the widest range that still gives distinct, repeatable positions.
+        </div>
+      </main>
+
+      <aside class="record">
+        <div class="panel-head">
+          <h2>Calibration record</h2>
+          <span>servo-map v3</span>
+        </div>
+        <div>
+          <div class="record-field">
+            <label for="travelSelect">Position travel</label>
+            <select id="travelSelect">
+              <option value="180">180 degrees</option>
+              <option value="360">360 degrees</option>
+            </select>
+          </div>
+          <label class="check"><input id="invertCheck" type="checkbox"> Invert logical direction</label>
+          <div id="validity" class="validity">Capture minimum and maximum before confirming.</div>
+          <button id="confirmButton" class="button" type="button" disabled>Confirm joint calibration</button>
+        </div>
+        <div class="stack">
+          <button id="nextButton" class="button secondary" type="button">Next uncalibrated joint</button>
+          <button id="saveButton" class="button" type="button">Save config file</button>
+          <button id="downloadButton" class="button secondary" type="button">Download JSON</button>
+          <label class="file-label">Import config<input id="importInput" type="file" accept="application/json,.json"></label>
+          <button id="resetButton" class="button secondary" type="button">Reload servo-map.json</button>
+        </div>
+        <div id="eventLog" class="log" aria-live="polite"><div>Calibration console initialized.</div></div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "hex01-servo-calibration-v3";
+    const GLOBAL_MIN_US = 500;
+    const GLOBAL_MAX_US = 2500;
+    const JOINT_IDS = [
+      "lf.coxa", "lf.femur", "lf.tibia",
+      "lm.coxa", "lm.femur", "lm.tibia",
+      "lr.coxa", "lr.femur", "lr.tibia",
+      "rf.coxa", "rf.femur", "rf.tibia",
+      "rm.coxa", "rm.femur", "rm.tibia",
+      "rr.coxa", "rr.femur", "rr.tibia"
+    ];
+    const LEG_NAMES = {
+      lf: "Left front", lm: "Left middle", lr: "Left rear",
+      rf: "Right front", rm: "Right middle", rr: "Right rear"
+    };
+    const JOINT_NAMES = { coxa: "Coxa", femur: "Femur", tibia: "Tibia" };
+
+    const state = {
+      servos: {},
+      selectedId: null,
+      activeId: null,
+      port: null,
+      reader: null,
+      writer: null,
+      reading: false,
+      connected: false,
+      connecting: false,
+      pending: new Map(),
+      nextCommandId: 1,
+      commandQueue: Promise.resolve(),
+      liveTarget: null,
+      liveTimer: null,
+      liveSending: false,
+      liveLastSentAt: 0
+    };
+
+    const elements = {
+      connection: document.querySelector("#connectionState"),
+      connect: document.querySelector("#connectButton"),
+      relax: document.querySelector("#relaxButton"),
+      safety: document.querySelector("#safetyCheck"),
+      roster: document.querySelector("#jointRoster"),
+      progressText: document.querySelector("#progressText"),
+      progressBar: document.querySelector("#progressBar"),
+      selectedName: document.querySelector("#selectedName"),
+      selectedAddress: document.querySelector("#selectedAddress"),
+      pulse: document.querySelector("#pulseSlider"),
+      pulseValue: document.querySelector("#pulseValue"),
+      send: document.querySelector("#sendButton"),
+      minValue: document.querySelector("#minValue"),
+      centerValue: document.querySelector("#centerValue"),
+      maxValue: document.querySelector("#maxValue"),
+      travel: document.querySelector("#travelSelect"),
+      invert: document.querySelector("#invertCheck"),
+      validity: document.querySelector("#validity"),
+      confirm: document.querySelector("#confirmButton"),
+      next: document.querySelector("#nextButton"),
+      save: document.querySelector("#saveButton"),
+      download: document.querySelector("#downloadButton"),
+      import: document.querySelector("#importInput"),
+      reset: document.querySelector("#resetButton"),
+      log: document.querySelector("#eventLog"),
+      toast: document.querySelector("#toast")
+    };
+
+    function jointLabel(id) {
+      const [leg, joint] = id.split(".");
+      return `${LEG_NAMES[leg]} ${JOINT_NAMES[joint].toLowerCase()}`;
+    }
+
+    function clampPulse(value) {
+      return Math.max(GLOBAL_MIN_US, Math.min(GLOBAL_MAX_US, Math.round(Number(value) / 5) * 5));
+    }
+
+    function sanitizeConfig(input) {
+      const source = input && input.assignments ? input.assignments : input;
+      const clean = {};
+      if (!source || typeof source !== "object") return clean;
+
+      for (const id of JOINT_IDS) {
+        const item = source[id];
+        if (!item) continue;
+        const board = Number(item.board);
+        const channel = Number(item.channel);
+        if ((board !== 0 && board !== 1) || channel < 0 || channel > 15) continue;
+        const minUs = clampPulse(Number.isFinite(Number(item.min_us)) ? item.min_us : GLOBAL_MIN_US);
+        const maxUs = clampPulse(Number.isFinite(Number(item.max_us)) ? item.max_us : GLOBAL_MAX_US);
+        const centerUs = clampPulse(Number.isFinite(Number(item.center_us)) ? item.center_us : 1500);
+        const requestedTravel = Number(item.travel_degrees);
+        const valid = minUs < centerUs && centerUs < maxUs;
+        clean[id] = {
+          board,
+          channel,
+          minUs,
+          centerUs,
+          maxUs,
+          travelDegrees: requestedTravel === 180 || requestedTravel === 360
+            ? requestedTravel
+            : id.endsWith(".tibia") ? 360 : 180,
+          invert: Boolean(item.invert),
+          calibrated: Boolean(item.calibrated) && valid,
+          minCaptured: Boolean(item.min_captured || item.calibrated),
+          maxCaptured: Boolean(item.max_captured || item.calibrated),
+          currentUs: centerUs
+        };
+      }
+      return clean;
+    }
+
+    function mergeDraft(base, draft) {
+      for (const id of JOINT_IDS) {
+        if (!base[id] || !draft[id]) continue;
+        if (base[id].board !== draft[id].board || base[id].channel !== draft[id].channel) continue;
+        base[id] = draft[id];
+      }
+      return base;
+    }
+
+    async function loadDefaultConfig(useDraft = true) {
+      try {
+        const response = await fetch("servo-map.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        let config = sanitizeConfig(await response.json());
+        if (useDraft) {
+          try {
+            const draft = sanitizeConfig(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+            config = mergeDraft(config, draft);
+          } catch (error) { /* no valid draft */ }
+        }
+        applyConfig(config, useDraft ? "servo-map.json + browser draft" : "servo-map.json");
+      } catch (error) {
+        toast(`Could not load servo-map.json: ${error.message}`);
+        addLog(`Config load failed: ${error.message}`, "error");
+      }
+    }
+
+    function applyConfig(config, sourceName) {
+      state.servos = config;
+      state.selectedId = state.servos[state.selectedId] ? state.selectedId : JOINT_IDS.find((id) => state.servos[id]) || null;
+      if (state.selectedId) elements.pulse.value = state.servos[state.selectedId].currentUs;
+      persistDraft();
+      render();
+      addLog(`Loaded ${Object.keys(config).length} joints from ${sourceName}.`, "ok");
+    }
+
+    function persistDraft() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(buildConfig()));
+    }
+
+    function buildConfig() {
+      const assignments = {};
+      for (const id of JOINT_IDS) {
+        const servo = state.servos[id];
+        if (!servo) continue;
+        assignments[id] = {
+          board: servo.board,
+          address: `0x${(0x40 + servo.board).toString(16)}`,
+          channel: servo.channel,
+          center_us: servo.centerUs,
+          min_us: servo.minUs,
+          max_us: servo.maxUs,
+          travel_degrees: servo.travelDegrees,
+          invert: servo.invert,
+          calibrated: servo.calibrated,
+          min_captured: servo.minCaptured,
+          max_captured: servo.maxCaptured
+        };
+      }
+      return {
+        format: "hex01-servo-map",
+        version: 3,
+        generated_at: new Date().toISOString(),
+        assignments
+      };
+    }
+
+    function renderRoster() {
+      elements.roster.replaceChildren();
+      for (const leg of ["lf", "lm", "lr", "rf", "rm", "rr"]) {
+        const section = document.createElement("section");
+        section.className = "leg-group";
+        section.innerHTML = `<div class="leg-title">${LEG_NAMES[leg]} / ${leg.toUpperCase()}</div>`;
+        const list = document.createElement("div");
+        list.className = "joint-list";
+        for (const joint of ["coxa", "femur", "tibia"]) {
+          const id = `${leg}.${joint}`;
+          const servo = state.servos[id];
+          if (!servo) continue;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `joint-button${id === state.selectedId ? " selected" : ""}${servo.calibrated ? " calibrated" : ""}`;
+          button.innerHTML = `<strong>${JOINT_NAMES[joint]}</strong><small>${servo.calibrated ? "CAL" : "PENDING"}</small>`;
+          button.addEventListener("click", () => selectJoint(id));
+          list.append(button);
+        }
+        section.append(list);
+        elements.roster.append(section);
+      }
+    }
+
+    function calibrationValidity(servo) {
+      if (!servo) return { valid: false, message: "Select a mapped joint." };
+      if (!servo.minCaptured || !servo.maxCaptured) return { valid: false, message: "Capture both minimum and maximum pulses." };
+      if (!(servo.minUs < servo.centerUs && servo.centerUs < servo.maxUs)) {
+        return { valid: false, message: "Required order: minimum < center < maximum." };
+      }
+      return { valid: true, message: "Envelope is valid. Test all three values, then confirm." };
+    }
+
+    function render() {
+      renderRoster();
+      const calibratedCount = Object.values(state.servos).filter((servo) => servo.calibrated).length;
+      elements.progressText.textContent = `${calibratedCount} / 18`;
+      elements.progressBar.style.width = `${(calibratedCount / 18) * 100}%`;
+
+      const servo = state.servos[state.selectedId];
+      if (servo) {
+        elements.selectedName.textContent = jointLabel(state.selectedId);
+        elements.selectedAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel}`;
+        if (!elements.pulse.matches(":focus")) elements.pulse.value = servo.currentUs;
+        elements.minValue.textContent = `${servo.minUs} us`;
+        elements.centerValue.textContent = `${servo.centerUs} us`;
+        elements.maxValue.textContent = `${servo.maxUs} us`;
+        elements.travel.value = String(servo.travelDegrees);
+        elements.invert.checked = servo.invert;
+      } else {
+        elements.selectedName.textContent = "None selected";
+        elements.selectedAddress.textContent = "Load a map and select a joint.";
+      }
+      elements.pulseValue.textContent = `${elements.pulse.value} us`;
+
+      const validity = calibrationValidity(servo);
+      elements.validity.textContent = servo && servo.calibrated ? "Calibration complete. Editing a captured value will reopen it." : validity.message;
+      elements.validity.classList.toggle("valid", Boolean(servo && servo.calibrated));
+      elements.confirm.disabled = !(servo && validity.valid && !servo.calibrated);
+      updateControls();
+    }
+
+    function updateControls() {
+      const canMove = state.connected && elements.safety.checked && Boolean(state.selectedId);
+      elements.connect.disabled = state.connecting;
+      elements.connect.textContent = state.connecting ? "Waiting for Pico" : state.connected ? "Disconnect" : "Connect Pico";
+      elements.connection.textContent = state.connecting ? "Connecting" : state.connected ? "Firmware ready / PCA online" : "Disconnected";
+      elements.connection.classList.toggle("ready", state.connected);
+      elements.relax.disabled = !state.connected;
+      elements.send.disabled = !canMove;
+      document.querySelectorAll(".nudge, [data-test]").forEach((button) => { button.disabled = !canMove; });
+      document.querySelectorAll("[data-capture]").forEach((button) => { button.disabled = !state.selectedId; });
+    }
+
+    async function selectJoint(id) {
+      if (id === state.selectedId) return;
+      cancelLive();
+      if (state.activeId && state.connected) await relaxSelected();
+      state.selectedId = id;
+      elements.pulse.value = state.servos[id].currentUs;
+      render();
+    }
+
+    async function connectSerial() {
+      if (state.connected) {
+        await disconnectSerial();
+        return;
+      }
+      if (!("serial" in navigator)) {
+        toast("Web Serial requires a compatible browser on localhost.");
+        return;
+      }
+      try {
+        state.connecting = true;
+        updateControls();
+        state.port = await navigator.serial.requestPort();
+        await state.port.open({ baudRate: 115200 });
+        state.writer = state.port.writable.getWriter();
+        state.reading = true;
+        readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
+        await delay(150);
+        const hello = await sendCommand({ cmd: "hello" }, 2500);
+        if (Number(hello.version) < 4) throw new Error(`firmware v${hello.version} is too old; v4 is required`);
+        const available = new Set((hello.available_addresses || []).map(Number));
+        if (!available.has(0x40) && !available.has(0x41)) throw new Error("no PCA9685 board initialized");
+        await sendCommand({ cmd: "relax_all" });
+        state.connected = true;
+        state.connecting = false;
+        state.activeId = null;
+        render();
+        addLog(`Connected to firmware v${hello.version}; outputs relaxed.`, "ok");
+      } catch (error) {
+        toast(`Connection failed: ${error.message}`);
+        addLog(`Connection failed: ${error.message}`, "error");
+        await closePort();
+      }
+    }
+
+    async function disconnectSerial() {
+      cancelLive();
+      try {
+        if (state.writer) await enqueue({ cmd: "relax_all" });
+      } catch (error) {
+        addLog(`Final relax failed: ${error.message}`, "error");
+      }
+      await closePort();
+      addLog("Serial port closed.");
+    }
+
+    async function closePort() {
+      cancelLive();
+      state.connected = false;
+      state.connecting = false;
+      state.reading = false;
+      state.activeId = null;
+      for (const pending of state.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("Serial port closed"));
+      }
+      state.pending.clear();
+      if (state.reader) {
+        try { await state.reader.cancel(); } catch (error) { /* already closed */ }
+      }
+      if (state.writer) {
+        try { state.writer.releaseLock(); } catch (error) { /* already released */ }
+      }
+      state.reader = null;
+      state.writer = null;
+      if (state.port) {
+        try { await state.port.close(); } catch (error) { /* read loop settling */ }
+      }
+      state.port = null;
+      render();
+    }
+
+    async function readSerial() {
+      const decoder = new TextDecoder();
+      let buffer = "";
+      state.reader = state.port.readable.getReader();
+      try {
+        while (state.reading) {
+          const { value, done } = await state.reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop();
+          lines.forEach(handleLine);
+        }
+      } finally {
+        try { state.reader.releaseLock(); } catch (error) { /* port closed */ }
+        state.reader = null;
+      }
+    }
+
+    function handleLine(raw) {
+      const line = raw.trim();
+      if (!line) return;
+      try {
+        const message = JSON.parse(line);
+        const pending = message.id !== undefined ? state.pending.get(message.id) : null;
+        if (pending) {
+          clearTimeout(pending.timer);
+          state.pending.delete(message.id);
+          if (message.ok === false) pending.reject(new Error(message.error || "Pico command failed"));
+          else pending.resolve(message);
+        }
+        if (message.ok === false) addLog(`Pico: ${message.error}`, "error");
+      } catch (error) {
+        addLog(`Pico text: ${line}`);
+      }
+    }
+
+    async function sendCommand(command, timeoutMs = 2200) {
+      if (!state.writer) throw new Error("Pico is not connected");
+      const id = state.nextCommandId++;
+      const request = { ...command, id };
+      const response = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          state.pending.delete(id);
+          reject(new Error(`Pico did not acknowledge '${command.cmd}'`));
+        }, timeoutMs);
+        state.pending.set(id, { resolve, reject, timer });
+      });
+      try {
+        await state.writer.write(new TextEncoder().encode(`${JSON.stringify(request)}\n`));
+      } catch (error) {
+        const pending = state.pending.get(id);
+        if (pending) clearTimeout(pending.timer);
+        state.pending.delete(id);
+        throw error;
+      }
+      return response;
+    }
+
+    function enqueue(command) {
+      const operation = state.commandQueue.then(() => sendCommand(command));
+      state.commandQueue = operation.catch(() => {});
+      return operation;
+    }
+
+    async function setPulse(id, pulseUs, quiet = false) {
+      if (!id || !state.connected || !elements.safety.checked) return false;
+      const servo = state.servos[id];
+      const pulse = clampPulse(pulseUs);
+      try {
+        if (state.activeId && state.activeId !== id) await relaxSelected();
+        await enqueue({ cmd: "set_pulse", board: servo.board, channel: servo.channel, pulse_us: pulse });
+        state.activeId = id;
+        servo.currentUs = pulse;
+        if (!quiet) addLog(`${id} -> ${pulse} us`, "ok");
+        return true;
+      } catch (error) {
+        cancelLive();
+        toast(`Pulse failed: ${error.message}`);
+        addLog(`Pulse failed: ${error.message}`, "error");
+        return false;
+      }
+    }
+
+    async function relaxSelected() {
+      cancelLive();
+      if (!state.activeId || !state.connected) return;
+      const id = state.activeId;
+      const servo = state.servos[id];
+      try {
+        await enqueue({ cmd: "relax", board: servo.board, channel: servo.channel });
+        state.activeId = null;
+      } catch (error) {
+        toast(`Relax failed: ${error.message}`);
+      }
+    }
+
+    async function relaxAll() {
+      cancelLive();
+      if (!state.connected) return;
+      try {
+        await enqueue({ cmd: "relax_all" });
+        state.activeId = null;
+        addLog("All outputs relaxed.", "ok");
+      } catch (error) {
+        toast(`Relax failed: ${error.message}`);
+      }
+    }
+
+    function cancelLive() {
+      state.liveTarget = null;
+      if (state.liveTimer !== null) clearTimeout(state.liveTimer);
+      state.liveTimer = null;
+    }
+
+    function scheduleLive(pulse) {
+      if (!state.connected || !elements.safety.checked || !state.selectedId) return;
+      state.liveTarget = { id: state.selectedId, pulse: Number(pulse) };
+      armLiveFlush();
+    }
+
+    function armLiveFlush() {
+      if (state.liveTimer !== null || state.liveSending || !state.liveTarget) return;
+      const wait = Math.max(0, 67 - (performance.now() - state.liveLastSentAt));
+      state.liveTimer = setTimeout(flushLive, wait);
+    }
+
+    async function flushLive() {
+      state.liveTimer = null;
+      const target = state.liveTarget;
+      state.liveTarget = null;
+      if (!target || target.id !== state.selectedId) return;
+      state.liveSending = true;
+      await setPulse(target.id, target.pulse, true);
+      state.liveSending = false;
+      state.liveLastSentAt = performance.now();
+      armLiveFlush();
+    }
+
+    function captureValue(kind) {
+      const servo = state.servos[state.selectedId];
+      if (!servo) return;
+      const pulse = clampPulse(elements.pulse.value);
+      if (kind === "min") {
+        servo.minUs = pulse;
+        servo.minCaptured = true;
+      } else if (kind === "center") {
+        servo.centerUs = pulse;
+      } else {
+        servo.maxUs = pulse;
+        servo.maxCaptured = true;
+      }
+      servo.calibrated = false;
+      persistDraft();
+      render();
+      addLog(`${state.selectedId} ${kind} captured at ${pulse} us.`);
+    }
+
+    function testValue(kind) {
+      const servo = state.servos[state.selectedId];
+      if (!servo) return;
+      const pulse = kind === "min" ? servo.minUs : kind === "center" ? servo.centerUs : servo.maxUs;
+      elements.pulse.value = pulse;
+      elements.pulseValue.textContent = `${pulse} us`;
+      setPulse(state.selectedId, pulse);
+    }
+
+    function confirmCalibration() {
+      const servo = state.servos[state.selectedId];
+      const validity = calibrationValidity(servo);
+      if (!servo || !validity.valid) return;
+      servo.calibrated = true;
+      persistDraft();
+      render();
+      toast(`${jointLabel(state.selectedId)} calibration confirmed.`);
+      selectNextUncalibrated();
+    }
+
+    async function selectNextUncalibrated() {
+      const start = Math.max(0, JOINT_IDS.indexOf(state.selectedId));
+      const ordered = [...JOINT_IDS.slice(start + 1), ...JOINT_IDS.slice(0, start + 1)];
+      const next = ordered.find((id) => state.servos[id] && !state.servos[id].calibrated);
+      if (next) await selectJoint(next);
+      else toast("All mapped joints are calibrated.");
+    }
+
+    function changePulse(delta) {
+      const pulse = clampPulse(Number(elements.pulse.value) + delta);
+      elements.pulse.value = pulse;
+      elements.pulseValue.textContent = `${pulse} us`;
+      scheduleLive(pulse);
+    }
+
+    async function saveConfigFile() {
+      const config = buildConfig();
+      const text = `${JSON.stringify(config, null, 2)}\n`;
+      if (!("showSaveFilePicker" in window)) {
+        downloadConfig();
+        toast("Downloaded servo-map.json; replace the project file with it.");
+        return;
+      }
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: "servo-map.json",
+          types: [{ description: "JSON configuration", accept: { "application/json": [".json"] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        toast("Calibration config saved.");
+      } catch (error) {
+        if (error.name !== "AbortError") toast(`Save failed: ${error.message}`);
+      }
+    }
+
+    function downloadConfig() {
+      const blob = new Blob([`${JSON.stringify(buildConfig(), null, 2)}\n`], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "servo-map.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importConfig(file) {
+      if (!file) return;
+      try {
+        if (state.connected) await relaxAll();
+        applyConfig(sanitizeConfig(JSON.parse(await file.text())), file.name);
+      } catch (error) {
+        toast(`Import failed: ${error.message}`);
+      } finally {
+        elements.import.value = "";
+      }
+    }
+
+    function addLog(message, className = "") {
+      const line = document.createElement("div");
+      line.textContent = message;
+      if (className) line.className = className;
+      elements.log.append(line);
+      while (elements.log.children.length > 70) elements.log.firstElementChild.remove();
+      elements.log.scrollTop = elements.log.scrollHeight;
+    }
+
+    let toastTimer;
+    function toast(message) {
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 3400);
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    elements.connect.addEventListener("click", connectSerial);
+    elements.relax.addEventListener("click", relaxAll);
+    elements.safety.addEventListener("change", () => {
+      updateControls();
+      if (!elements.safety.checked && state.connected) relaxAll();
+    });
+    elements.pulse.addEventListener("input", () => {
+      elements.pulseValue.textContent = `${elements.pulse.value} us`;
+      if (state.selectedId) state.servos[state.selectedId].currentUs = Number(elements.pulse.value);
+      scheduleLive(elements.pulse.value);
+    });
+    elements.pulse.addEventListener("change", () => scheduleLive(elements.pulse.value));
+    elements.send.addEventListener("click", () => setPulse(state.selectedId, elements.pulse.value));
+    document.querySelectorAll(".nudge[data-delta]").forEach((button) => button.addEventListener("click", () => changePulse(Number(button.dataset.delta))));
+    document.querySelectorAll("[data-capture]").forEach((button) => button.addEventListener("click", () => captureValue(button.dataset.capture)));
+    document.querySelectorAll("[data-test]").forEach((button) => button.addEventListener("click", () => testValue(button.dataset.test)));
+    elements.travel.addEventListener("change", () => {
+      if (!state.selectedId) return;
+      state.servos[state.selectedId].travelDegrees = Number(elements.travel.value);
+      state.servos[state.selectedId].calibrated = false;
+      persistDraft();
+      render();
+    });
+    elements.invert.addEventListener("change", () => {
+      if (!state.selectedId) return;
+      state.servos[state.selectedId].invert = elements.invert.checked;
+      state.servos[state.selectedId].calibrated = false;
+      persistDraft();
+      render();
+    });
+    elements.confirm.addEventListener("click", confirmCalibration);
+    elements.next.addEventListener("click", selectNextUncalibrated);
+    elements.save.addEventListener("click", saveConfigFile);
+    elements.download.addEventListener("click", downloadConfig);
+    elements.import.addEventListener("change", () => importConfig(elements.import.files[0]));
+    elements.reset.addEventListener("click", async () => {
+      if (!window.confirm("Discard the browser calibration draft and reload servo-map.json?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      if (state.connected) await relaxAll();
+      await loadDefaultConfig(false);
+    });
+    window.addEventListener("beforeunload", () => {
+      if (state.writer) enqueue({ cmd: "relax_all" });
+    });
+    navigator.serial?.addEventListener("disconnect", async (event) => {
+      if (state.port && event.port === state.port) {
+        await closePort();
+        addLog("Pico disconnected.", "error");
+      }
+    });
+
+    render();
+    loadDefaultConfig();
+  </script>
+</body>
+</html>

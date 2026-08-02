@@ -603,6 +603,7 @@
           <div class="tool-menu" aria-label="Project tools">
             <a href="README.html">Build dossier</a>
             <a href="servo_mapper.html">Servo mapper</a>
+            <a href="servo_calibrator.html">Calibration</a>
             <a class="active" href="servo_control.html" aria-current="page">Manual control</a>
           </div>
         </div>
@@ -663,7 +664,7 @@
           <div class="field">
             <label for="pulseSlider">Target pulse <output id="pulseValue">1500 us</output></label>
             <input id="pulseSlider" type="range" min="500" max="2500" step="5" value="1500">
-            <div class="range-labels"><span>500</span><span id="centerLabel">center 1500</span><span>2500</span></div>
+            <div class="range-labels"><span id="pulseMinLabel">500</span><span id="centerLabel">center 1500</span><span id="pulseMaxLabel">2500</span></div>
           </div>
           <div class="nudge-grid">
             <button class="nudge" data-delta="-50" type="button">-50</button>
@@ -780,6 +781,8 @@
       continuousPanel: document.querySelector("#continuousPanel"),
       pulse: document.querySelector("#pulseSlider"),
       pulseValue: document.querySelector("#pulseValue"),
+      pulseMinLabel: document.querySelector("#pulseMinLabel"),
+      pulseMaxLabel: document.querySelector("#pulseMaxLabel"),
       liveControl: document.querySelector("#liveControl"),
       centerLabel: document.querySelector("#centerLabel"),
       center: document.querySelector("#centerButton"),
@@ -812,10 +815,23 @@
         const channel = Number(item.channel);
         const centerUs = Number(item.center_us ?? item.centerUs ?? 1500);
         if ((board !== 0 && board !== 1) || channel < 0 || channel > 15 || !Number.isFinite(centerUs)) continue;
+        const requestedMin = Number(item.min_us ?? item.minUs);
+        const requestedMax = Number(item.max_us ?? item.maxUs);
+        const safeCenter = Math.max(500, Math.min(2500, centerUs));
+        const safeMin = Math.max(500, Math.min(2500, requestedMin));
+        const safeMax = Math.max(500, Math.min(2500, requestedMax));
+        const limitsValid = Boolean(item.calibrated)
+          && Number.isFinite(requestedMin)
+          && Number.isFinite(requestedMax)
+          && safeMin < safeCenter
+          && safeCenter < safeMax;
         clean[id] = {
           board,
           channel,
-          centerUs: Math.max(500, Math.min(2500, centerUs))
+          centerUs: safeCenter,
+          minUs: limitsValid ? safeMin : 500,
+          maxUs: limitsValid ? safeMax : 2500,
+          calibrated: limitsValid
         };
       }
       return clean;
@@ -825,7 +841,17 @@
       try {
         const response = await fetch("servo-map.json", { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        applyMap(await response.json(), "servo-map.json");
+        const base = sanitizeMap(await response.json());
+        let sourceName = "servo-map.json";
+        try {
+          const draft = sanitizeMap(JSON.parse(localStorage.getItem("hex01-servo-calibration-v3")));
+          for (const id of JOINT_IDS) {
+            if (!base[id] || !draft[id] || !draft[id].calibrated) continue;
+            if (base[id].board === draft[id].board && base[id].channel === draft[id].channel) base[id] = draft[id];
+          }
+          if (Object.values(draft).some((servo) => servo.calibrated)) sourceName += " + calibration draft";
+        } catch (error) { /* no valid calibration draft */ }
+        applyMap(base, sourceName);
       } catch (error) {
         try {
           const local = JSON.parse(localStorage.getItem("hex01-servo-map-v2"));
@@ -855,6 +881,7 @@
     async function importMap(file) {
       if (!file) return;
       try {
+        if (state.connected) await relaxAll();
         applyMap(JSON.parse(await file.text()), file.name);
       } catch (error) {
         toast(`Map import failed: ${error.message}`);
@@ -887,8 +914,12 @@
       const servo = state.mapping[state.selectedId];
       if (servo) {
         elements.jointName.textContent = jointLabel(state.selectedId);
-        elements.jointAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel} / mapped center ${servo.centerUs} us`;
+        elements.jointAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel} / ${servo.minUs}-${servo.maxUs} us${servo.calibrated ? " calibrated" : " global range"}`;
         elements.centerLabel.textContent = `center ${servo.centerUs}`;
+        elements.pulse.min = servo.minUs;
+        elements.pulse.max = servo.maxUs;
+        elements.pulseMinLabel.textContent = servo.minUs;
+        elements.pulseMaxLabel.textContent = servo.maxUs;
         if (!elements.pulse.matches(":focus")) elements.pulse.value = state.pulseValues[state.selectedId] ?? servo.centerUs;
       } else {
         elements.jointName.textContent = "None selected";
@@ -1101,7 +1132,7 @@
       }
       const servo = state.mapping[id];
       if (!servo) return false;
-      const pulse = Math.max(500, Math.min(2500, Math.round(pulseUs / 5) * 5));
+      const pulse = Math.max(servo.minUs, Math.min(servo.maxUs, Math.round(pulseUs / 5) * 5));
       try {
         if (!state.holdAll) {
           for (const activeId of [...state.activeIds]) {
@@ -1208,7 +1239,7 @@
         for (const id of JOINT_IDS) {
           if (state.centerCancel) throw new Error("centering cancelled");
           const servo = state.mapping[id];
-          const pulse = Math.max(500, Math.min(2500, Math.round(servo.centerUs / 5) * 5));
+          const pulse = Math.max(servo.minUs, Math.min(servo.maxUs, Math.round(servo.centerUs / 5) * 5));
           await enqueue({ cmd: "set_pulse", board: servo.board, channel: servo.channel, pulse_us: pulse });
           state.activeIds.add(id);
           state.pulseValues[id] = pulse;
@@ -1265,7 +1296,9 @@
 
     function nudge(delta) {
       cancelLivePulse();
-      const next = Math.max(500, Math.min(2500, Number(elements.pulse.value) + delta));
+      const servo = state.mapping[state.selectedId];
+      if (!servo) return;
+      const next = Math.max(servo.minUs, Math.min(servo.maxUs, Number(elements.pulse.value) + delta));
       elements.pulse.value = next;
       elements.pulseValue.textContent = `${next} us`;
       setSelectedPulse(next);
