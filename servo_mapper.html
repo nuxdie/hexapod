@@ -1,0 +1,1275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Identify and assign randomly connected hexapod servos using a Pico and Web Serial.">
+  <title>HEX-01 Servo Mapper</title>
+  <style>
+    :root {
+      --ink: #161d1a;
+      --panel: #202a26;
+      --panel-2: #29342f;
+      --paper: #e9e5d9;
+      --paper-2: #d8d3c6;
+      --line: #777d75;
+      --muted: #626b65;
+      --signal: #f05a32;
+      --signal-dark: #a7351d;
+      --ok: #9ebf6f;
+      --warn: #f0b44d;
+      --max: 1540px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(233, 229, 217, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(233, 229, 217, 0.035) 1px, transparent 1px),
+        var(--panel);
+      background-size: 32px 32px;
+      font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+    }
+
+    button,
+    input { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    .channel:focus-visible,
+    .joint:focus-visible {
+      outline: 3px solid var(--warn);
+      outline-offset: 2px;
+    }
+
+    .app {
+      width: min(100%, var(--max));
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 0 0 1px #0a0d0c, 0 0 90px rgba(0, 0, 0, 0.3);
+    }
+
+    header {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      min-height: 88px;
+      color: var(--paper);
+      background: var(--ink);
+      border-bottom: 6px solid var(--signal);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 24px;
+    }
+
+    .mark {
+      color: var(--signal);
+      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-size: 37px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    h1 {
+      margin: 0 0 3px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 400;
+    }
+
+    .subtitle {
+      color: #aeb5af;
+      font: 11px/1.3 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 24px;
+      border-left: 1px solid #47514c;
+    }
+
+    .connection-state {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 112px;
+      color: #b8beb9;
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .connection-state::before {
+      width: 10px;
+      height: 10px;
+      content: "";
+      background: #707872;
+      border: 1px solid #a8aea9;
+    }
+
+    .connection-state.online { color: #dfeec9; }
+    .connection-state.online::before { background: var(--ok); border-color: #dfeec9; }
+
+    .button {
+      min-height: 38px;
+      padding: 8px 13px;
+      color: var(--paper);
+      background: var(--signal-dark);
+      border: 1px solid #ff805f;
+      border-radius: 3px;
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .button:hover:not(:disabled) { background: var(--signal); }
+
+    .button.secondary {
+      color: var(--ink);
+      background: transparent;
+      border-color: var(--line);
+    }
+
+    .button.secondary:hover:not(:disabled) {
+      color: var(--paper);
+      background: var(--ink);
+    }
+
+    .button.danger {
+      color: #fff8e9;
+      background: #7e2417;
+      border-color: #bd5139;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .safety-bar {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 24px;
+      color: #332818;
+      background: #e7c37c;
+      border-bottom: 1px solid #8a6734;
+    }
+
+    .safety-bar strong {
+      font: 900 12px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .safety-bar span { font-size: 13px; }
+
+    .check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font: 700 12px/1.25 "Courier New", monospace;
+    }
+
+    .check input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--signal-dark);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 322px minmax(470px, 1fr) 290px;
+      min-height: calc(100vh - 137px);
+    }
+
+    aside,
+    main { min-width: 0; }
+
+    .outputs {
+      padding: 22px 18px 32px;
+      color: var(--paper);
+      background: var(--panel);
+      border-right: 1px solid var(--ink);
+    }
+
+    .inspector {
+      padding: 22px 18px 32px;
+      background: var(--paper-2);
+      border-left: 1px solid var(--ink);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 11px;
+      border-bottom: 1px solid currentColor;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      font-weight: 400;
+    }
+
+    .panel-head span {
+      color: #9ba39e;
+      font: 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .board { margin-bottom: 26px; }
+
+    .board-title {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 9px;
+      color: #aeb5af;
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .channels {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .channel {
+      position: relative;
+      min-width: 0;
+      min-height: 48px;
+      padding: 6px 3px;
+      color: #d9ddd9;
+      background: #303b36;
+      border: 1px solid #59635e;
+      border-radius: 2px;
+      font: 700 12px/1 "Courier New", monospace;
+    }
+
+    .channel:hover { border-color: var(--warn); }
+
+    .channel.selected {
+      color: #fff8e9;
+      background: var(--signal-dark);
+      border-color: #ff896c;
+      box-shadow: inset 0 -4px 0 var(--signal);
+    }
+
+    .channel.assigned:not(.selected) {
+      color: var(--ink);
+      background: var(--ok);
+      border-color: #d7e7c0;
+    }
+
+    .channel-id { display: block; margin-bottom: 5px; }
+
+    .channel-map {
+      display: block;
+      overflow: hidden;
+      font-size: 8px;
+      font-weight: 400;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .output-options {
+      display: grid;
+      gap: 10px;
+      padding-top: 16px;
+      border-top: 1px solid #505a55;
+    }
+
+    .output-options .check { color: #d9ddd9; font-size: 11px; }
+
+    .diagram {
+      display: flex;
+      flex-direction: column;
+      padding: 22px 24px 32px;
+      overflow: hidden;
+    }
+
+    .diagram .panel-head span { color: var(--muted); }
+
+    .instruction {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-bottom: 18px;
+      border: 1px solid var(--ink);
+    }
+
+    .instruction div {
+      min-height: 62px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--ink);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .instruction div:last-child { border-right: 0; }
+
+    .instruction b {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--signal-dark);
+      font: 900 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.06em;
+    }
+
+    .robot-wrap {
+      display: grid;
+      flex: 1;
+      min-height: 470px;
+      place-items: center;
+      background:
+        linear-gradient(rgba(22, 29, 26, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 29, 26, 0.08) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border: 1px solid var(--line);
+    }
+
+    #robot {
+      width: min(100%, 840px);
+      height: auto;
+      max-height: 650px;
+      overflow: visible;
+    }
+
+    .leg-line {
+      fill: none;
+      stroke: #37413c;
+      stroke-width: 12;
+      stroke-linecap: square;
+      stroke-linejoin: bevel;
+    }
+
+    .body-shape {
+      fill: var(--panel-2);
+      stroke: var(--ink);
+      stroke-width: 4;
+    }
+
+    .body-inset {
+      fill: none;
+      stroke: var(--signal);
+      stroke-width: 2;
+    }
+
+    .joint {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .joint circle {
+      fill: var(--paper);
+      stroke: var(--ink);
+      stroke-width: 4;
+      transition: fill 120ms ease, stroke 120ms ease;
+    }
+
+    .joint:hover circle,
+    .joint:focus-visible circle {
+      fill: var(--warn);
+      stroke: var(--signal-dark);
+    }
+
+    .joint.assigned circle {
+      fill: var(--ok);
+      stroke: #354923;
+    }
+
+    .joint text {
+      pointer-events: none;
+      fill: var(--ink);
+      font: 900 11px/1 "Courier New", monospace;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    .leg-label {
+      fill: var(--signal-dark);
+      font: 900 14px/1 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-anchor: middle;
+    }
+
+    .orientation {
+      fill: var(--muted);
+      font: 700 11px/1 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-anchor: middle;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 12px;
+      color: var(--muted);
+      font: 11px/1.3 "Courier New", monospace;
+    }
+
+    .legend b { color: var(--ink); }
+
+    .selection-card {
+      min-height: 95px;
+      margin-bottom: 16px;
+      padding: 15px;
+      color: var(--paper);
+      background: var(--panel-2);
+      border-top: 5px solid var(--signal);
+    }
+
+    .selection-card small {
+      display: block;
+      margin-bottom: 7px;
+      color: #aeb5af;
+      font: 10px/1.2 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .selection-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-family: Georgia, serif;
+      font-size: 23px;
+      font-weight: 400;
+    }
+
+    .selection-card span {
+      color: #bac0bb;
+      font: 11px/1.35 "Courier New", monospace;
+    }
+
+    .field { margin-bottom: 15px; }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 7px;
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .field output { color: var(--signal-dark); }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--signal-dark);
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 18px 0 24px;
+    }
+
+    .action-grid .button:first-child { grid-column: 1 / -1; }
+
+    .mapping-count {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 20px 0 9px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mapping-count strong {
+      font-family: Georgia, serif;
+      font-size: 18px;
+      font-weight: 400;
+    }
+
+    .mapping-count span {
+      color: var(--signal-dark);
+      font: 900 14px/1 "Courier New", monospace;
+    }
+
+    .progress {
+      height: 7px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      background: #b8b3a7;
+      border: 1px solid #777d75;
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--signal-dark);
+      transition: width 160ms ease;
+    }
+
+    .file-actions { display: grid; gap: 7px; }
+
+    .file-label {
+      display: grid;
+      min-height: 38px;
+      place-items: center;
+      padding: 8px 13px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      font: 700 11px/1.2 "Courier New", monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .file-label:hover { color: var(--paper); background: var(--ink); }
+    .file-label input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+    .serial-log {
+      height: 90px;
+      margin-top: 20px;
+      padding: 10px;
+      overflow: auto;
+      color: #bdc4bf;
+      background: var(--ink);
+      border: 1px solid #59635e;
+      font: 10px/1.5 "Courier New", monospace;
+    }
+
+    .serial-log div { border-bottom: 1px solid #303934; }
+    .serial-log .error { color: #ff977e; }
+    .serial-log .ok { color: #c9e7a2; }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      right: 22px;
+      bottom: 22px;
+      max-width: min(390px, calc(100% - 44px));
+      padding: 14px 17px;
+      color: var(--paper);
+      background: var(--ink);
+      border-left: 6px solid var(--signal);
+      box-shadow: 8px 9px 0 rgba(0, 0, 0, 0.24);
+      font: 12px/1.45 "Courier New", monospace;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns: 280px minmax(430px, 1fr); }
+      .inspector {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 18px;
+        border-top: 1px solid var(--ink);
+        border-left: 0;
+      }
+      .inspector .panel-head { grid-column: 1 / -1; margin-bottom: 0; }
+      .serial-log { margin-top: 0; }
+    }
+
+    @media (max-width: 780px) {
+      header { display: block; }
+      .connection { border-top: 1px solid #47514c; border-left: 0; }
+      .safety-bar { grid-template-columns: 1fr; gap: 7px; }
+      .workspace { display: block; }
+      .outputs { border-right: 0; }
+      .channels { grid-template-columns: repeat(8, 1fr); }
+      .diagram { padding: 20px 14px; }
+      .instruction { grid-template-columns: 1fr; }
+      .instruction div { min-height: 0; border-right: 0; border-bottom: 1px solid var(--ink); }
+      .instruction div:last-child { border-bottom: 0; }
+      .robot-wrap { min-height: 380px; }
+      .inspector { display: block; }
+      .inspector > * { margin-bottom: 18px; }
+    }
+
+    @media (max-width: 520px) {
+      .brand { padding: 14px 16px; }
+      .connection { flex-wrap: wrap; padding: 14px 16px; }
+      .connection .button { flex: 1; }
+      .channels { grid-template-columns: repeat(4, 1fr); }
+      .robot-wrap { min-height: 310px; }
+      .joint circle { stroke-width: 6; }
+      .leg-label { font-size: 17px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="mark">HEX-01</div>
+        <div>
+          <h1>Servo assignment console</h1>
+          <div class="subtitle">Physical output identification / 18-joint map</div>
+        </div>
+      </div>
+      <div class="connection">
+        <div id="connectionState" class="connection-state">Disconnected</div>
+        <button id="connectButton" class="button" type="button">Connect Pico</button>
+        <button id="emergencyButton" class="button danger" type="button" disabled>Relax all</button>
+      </div>
+    </header>
+
+    <div class="safety-bar">
+      <strong>Before probing</strong>
+      <span>The first PWM command may move farther than the wiggle because an SG90 cannot report its starting angle.</span>
+      <label class="check"><input id="safetyCheck" type="checkbox"> Robot is elevated and clear</label>
+    </div>
+
+    <div class="workspace">
+      <aside class="outputs">
+        <div class="panel-head">
+          <h2>Physical outputs</h2>
+          <span>2 x 16 channels</span>
+        </div>
+        <div id="boards"></div>
+        <div class="output-options">
+          <label class="check"><input id="autoProbe" type="checkbox" checked> Wiggle when a channel is selected</label>
+          <span style="color:#aeb5af;font:10px/1.45 'Courier New',monospace">Green outputs are already assigned. Empty PCA9685 outputs are safe to select; no motion will occur.</span>
+        </div>
+      </aside>
+
+      <main class="diagram">
+        <div class="panel-head">
+          <h2>Logical joint schematic</h2>
+          <span>Front of robot at top</span>
+        </div>
+        <div class="instruction" aria-label="Assignment instructions">
+          <div><b>01 / SELECT</b>Choose a PCA board and output channel.</div>
+          <div><b>02 / OBSERVE</b>Wiggle it and watch which physical joint moves.</div>
+          <div><b>03 / ASSIGN</b>Click that joint on the robot schematic.</div>
+        </div>
+        <div class="robot-wrap">
+          <svg id="robot" viewBox="0 0 700 600" role="img" aria-labelledby="robotTitle robotDesc">
+            <title id="robotTitle">Clickable top-view hexapod joint schematic</title>
+            <desc id="robotDesc">Six legs with clickable hip, knee, and heel joints for assigning physical servo channels.</desc>
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#a7351d"/>
+              </marker>
+            </defs>
+
+            <path class="leg-line" d="M260 202 L165 143 L68 105"/>
+            <path class="leg-line" d="M245 300 L148 300 L50 300"/>
+            <path class="leg-line" d="M260 398 L165 457 L68 495"/>
+            <path class="leg-line" d="M440 202 L535 143 L632 105"/>
+            <path class="leg-line" d="M455 300 L552 300 L650 300"/>
+            <path class="leg-line" d="M440 398 L535 457 L632 495"/>
+
+            <path class="body-shape" d="M260 168 L440 168 L485 240 L485 360 L440 432 L260 432 L215 360 L215 240 Z"/>
+            <path class="body-inset" d="M278 193 L422 193 L457 248 L457 352 L422 407 L278 407 L243 352 L243 248 Z"/>
+            <text class="orientation" x="350" y="272">CONTROL + POWER</text>
+            <text class="orientation" x="350" y="290">TOP VIEW</text>
+            <line x1="350" y1="150" x2="350" y2="82" stroke="#a7351d" stroke-width="3" marker-end="url(#arrow)"/>
+            <text class="orientation" x="350" y="60">FRONT</text>
+
+            <text class="leg-label" x="91" y="74">LF</text>
+            <text class="leg-label" x="65" y="270">LM</text>
+            <text class="leg-label" x="91" y="535">LR</text>
+            <text class="leg-label" x="609" y="74">RF</text>
+            <text class="leg-label" x="635" y="270">RM</text>
+            <text class="leg-label" x="609" y="535">RR</text>
+
+            <g class="joint" data-joint="lf.hip" tabindex="0" role="button" aria-label="Left front hip"><circle cx="260" cy="202" r="22"/><text x="260" y="202">H</text><title>Left front / Hip (coxa)</title></g>
+            <g class="joint" data-joint="lf.knee" tabindex="0" role="button" aria-label="Left front knee"><circle cx="165" cy="143" r="22"/><text x="165" y="143">K</text><title>Left front / Knee (femur)</title></g>
+            <g class="joint" data-joint="lf.heel" tabindex="0" role="button" aria-label="Left front heel"><circle cx="68" cy="105" r="22"/><text x="68" y="105">E</text><title>Left front / Heel (tibia)</title></g>
+
+            <g class="joint" data-joint="lm.hip" tabindex="0" role="button" aria-label="Left middle hip"><circle cx="245" cy="300" r="22"/><text x="245" y="300">H</text><title>Left middle / Hip (coxa)</title></g>
+            <g class="joint" data-joint="lm.knee" tabindex="0" role="button" aria-label="Left middle knee"><circle cx="148" cy="300" r="22"/><text x="148" y="300">K</text><title>Left middle / Knee (femur)</title></g>
+            <g class="joint" data-joint="lm.heel" tabindex="0" role="button" aria-label="Left middle heel"><circle cx="50" cy="300" r="22"/><text x="50" y="300">E</text><title>Left middle / Heel (tibia)</title></g>
+
+            <g class="joint" data-joint="lr.hip" tabindex="0" role="button" aria-label="Left rear hip"><circle cx="260" cy="398" r="22"/><text x="260" y="398">H</text><title>Left rear / Hip (coxa)</title></g>
+            <g class="joint" data-joint="lr.knee" tabindex="0" role="button" aria-label="Left rear knee"><circle cx="165" cy="457" r="22"/><text x="165" y="457">K</text><title>Left rear / Knee (femur)</title></g>
+            <g class="joint" data-joint="lr.heel" tabindex="0" role="button" aria-label="Left rear heel"><circle cx="68" cy="495" r="22"/><text x="68" y="495">E</text><title>Left rear / Heel (tibia)</title></g>
+
+            <g class="joint" data-joint="rf.hip" tabindex="0" role="button" aria-label="Right front hip"><circle cx="440" cy="202" r="22"/><text x="440" y="202">H</text><title>Right front / Hip (coxa)</title></g>
+            <g class="joint" data-joint="rf.knee" tabindex="0" role="button" aria-label="Right front knee"><circle cx="535" cy="143" r="22"/><text x="535" y="143">K</text><title>Right front / Knee (femur)</title></g>
+            <g class="joint" data-joint="rf.heel" tabindex="0" role="button" aria-label="Right front heel"><circle cx="632" cy="105" r="22"/><text x="632" y="105">E</text><title>Right front / Heel (tibia)</title></g>
+
+            <g class="joint" data-joint="rm.hip" tabindex="0" role="button" aria-label="Right middle hip"><circle cx="455" cy="300" r="22"/><text x="455" y="300">H</text><title>Right middle / Hip (coxa)</title></g>
+            <g class="joint" data-joint="rm.knee" tabindex="0" role="button" aria-label="Right middle knee"><circle cx="552" cy="300" r="22"/><text x="552" y="300">K</text><title>Right middle / Knee (femur)</title></g>
+            <g class="joint" data-joint="rm.heel" tabindex="0" role="button" aria-label="Right middle heel"><circle cx="650" cy="300" r="22"/><text x="650" y="300">E</text><title>Right middle / Heel (tibia)</title></g>
+
+            <g class="joint" data-joint="rr.hip" tabindex="0" role="button" aria-label="Right rear hip"><circle cx="440" cy="398" r="22"/><text x="440" y="398">H</text><title>Right rear / Hip (coxa)</title></g>
+            <g class="joint" data-joint="rr.knee" tabindex="0" role="button" aria-label="Right rear knee"><circle cx="535" cy="457" r="22"/><text x="535" y="457">K</text><title>Right rear / Knee (femur)</title></g>
+            <g class="joint" data-joint="rr.heel" tabindex="0" role="button" aria-label="Right rear heel"><circle cx="632" cy="495" r="22"/><text x="632" y="495">E</text><title>Right rear / Heel (tibia)</title></g>
+          </svg>
+        </div>
+        <div class="legend"><span><b>H</b> Hip / coxa</span><span><b>K</b> Knee / femur</span><span><b>E</b> Heel / tibia</span><span>Green = assigned</span></div>
+      </main>
+
+      <aside class="inspector">
+        <div class="panel-head">
+          <h2>Probe controls</h2>
+          <span>Fine movement only</span>
+        </div>
+
+        <div>
+          <div class="selection-card">
+            <small>Selected physical output</small>
+            <strong id="selectedName">None</strong>
+            <span id="selectedMapping">Select a channel on the left.</span>
+          </div>
+
+          <div class="field">
+            <label for="centerPulse">Center pulse <output id="centerValue">1500 us</output></label>
+            <input id="centerPulse" type="range" min="900" max="2100" step="5" value="1500">
+          </div>
+          <div class="field">
+            <label for="wigglePulse">Wiggle each way <output id="wiggleValue">20 us</output></label>
+            <input id="wigglePulse" type="range" min="5" max="60" step="5" value="20">
+          </div>
+
+          <div class="action-grid">
+            <button id="probeButton" class="button" type="button" disabled>Wiggle selected</button>
+            <button id="relaxButton" class="button secondary" type="button" disabled>Relax selected</button>
+            <button id="unassignButton" class="button secondary" type="button" disabled>Unassign</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="mapping-count">
+            <strong>Assignment map</strong>
+            <span id="mappingCount">0 / 18</span>
+          </div>
+          <div class="progress" aria-hidden="true"><span id="mappingProgress"></span></div>
+          <div class="file-actions">
+            <button id="exportButton" class="button secondary" type="button">Export JSON</button>
+            <label class="file-label">Import JSON<input id="importInput" type="file" accept="application/json,.json"></label>
+            <button id="clearButton" class="button secondary" type="button">Clear assignments</button>
+          </div>
+        </div>
+
+        <div id="serialLog" class="serial-log" aria-live="polite">
+          <div>Console ready. Connect the Pico to begin.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "hex01-servo-map-v1";
+    const JOINT_IDS = [
+      "lf.hip", "lf.knee", "lf.heel",
+      "lm.hip", "lm.knee", "lm.heel",
+      "lr.hip", "lr.knee", "lr.heel",
+      "rf.hip", "rf.knee", "rf.heel",
+      "rm.hip", "rm.knee", "rm.heel",
+      "rr.hip", "rr.knee", "rr.heel"
+    ];
+    const LEG_NAMES = {
+      lf: "Left front", lm: "Left middle", lr: "Left rear",
+      rf: "Right front", rm: "Right middle", rr: "Right rear"
+    };
+    const JOINT_NAMES = { hip: "Hip", knee: "Knee", heel: "Heel" };
+
+    const state = {
+      port: null,
+      reader: null,
+      writer: null,
+      reading: false,
+      connected: false,
+      busy: false,
+      selected: null,
+      mapping: loadMapping()
+    };
+
+    const elements = {
+      boards: document.querySelector("#boards"),
+      connect: document.querySelector("#connectButton"),
+      connection: document.querySelector("#connectionState"),
+      emergency: document.querySelector("#emergencyButton"),
+      safety: document.querySelector("#safetyCheck"),
+      autoProbe: document.querySelector("#autoProbe"),
+      selectedName: document.querySelector("#selectedName"),
+      selectedMapping: document.querySelector("#selectedMapping"),
+      center: document.querySelector("#centerPulse"),
+      centerValue: document.querySelector("#centerValue"),
+      wiggle: document.querySelector("#wigglePulse"),
+      wiggleValue: document.querySelector("#wiggleValue"),
+      probe: document.querySelector("#probeButton"),
+      relax: document.querySelector("#relaxButton"),
+      unassign: document.querySelector("#unassignButton"),
+      count: document.querySelector("#mappingCount"),
+      progress: document.querySelector("#mappingProgress"),
+      export: document.querySelector("#exportButton"),
+      import: document.querySelector("#importInput"),
+      clear: document.querySelector("#clearButton"),
+      log: document.querySelector("#serialLog"),
+      toast: document.querySelector("#toast")
+    };
+
+    function loadMapping() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return sanitizeMapping(saved && saved.assignments ? saved.assignments : saved);
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function sanitizeMapping(candidate) {
+      const clean = {};
+      const used = new Set();
+      if (!candidate || typeof candidate !== "object") return clean;
+
+      for (const jointId of JOINT_IDS) {
+        const item = candidate[jointId];
+        if (!item) continue;
+        const board = Number(item.board);
+        const channel = Number(item.channel);
+        const requestedCenter = Number(item.center_us ?? item.centerUs ?? 1500);
+        const centerUs = Number.isFinite(requestedCenter) ? requestedCenter : 1500;
+        const physicalId = `${board}:${channel}`;
+        if ((board !== 0 && board !== 1) || channel < 0 || channel > 15 || used.has(physicalId)) continue;
+        clean[jointId] = {
+          board,
+          channel,
+          centerUs: Math.max(900, Math.min(2100, centerUs)),
+          invert: Boolean(item.invert)
+        };
+        used.add(physicalId);
+      }
+      return clean;
+    }
+
+    function saveMapping() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, assignments: state.mapping }));
+    }
+
+    function physicalId(board, channel) {
+      return `${board}:${channel}`;
+    }
+
+    function assignmentForPhysical(board, channel) {
+      return Object.entries(state.mapping).find(([, value]) => value.board === board && value.channel === channel);
+    }
+
+    function jointLabel(jointId) {
+      const [leg, joint] = jointId.split(".");
+      return `${LEG_NAMES[leg]} ${JOINT_NAMES[joint].toLowerCase()}`;
+    }
+
+    function renderBoards() {
+      elements.boards.replaceChildren();
+      for (let board = 0; board < 2; board += 1) {
+        const wrapper = document.createElement("section");
+        wrapper.className = "board";
+        wrapper.innerHTML = `<div class="board-title"><span>Board ${board + 1}</span><span>0x${(0x40 + board).toString(16)}</span></div>`;
+        const channels = document.createElement("div");
+        channels.className = "channels";
+
+        for (let channel = 0; channel < 16; channel += 1) {
+          const assignment = assignmentForPhysical(board, channel);
+          const selected = state.selected && state.selected.board === board && state.selected.channel === channel;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `channel${selected ? " selected" : ""}${assignment ? " assigned" : ""}`;
+          button.dataset.board = board;
+          button.dataset.channel = channel;
+          button.title = assignment ? jointLabel(assignment[0]) : `Board ${board + 1}, channel ${channel}`;
+          button.innerHTML = `<span class="channel-id">CH ${String(channel).padStart(2, "0")}</span><span class="channel-map">${assignment ? assignment[0].toUpperCase() : "UNMAPPED"}</span>`;
+          button.addEventListener("click", () => selectPhysical(board, channel));
+          channels.append(button);
+        }
+
+        wrapper.append(channels);
+        elements.boards.append(wrapper);
+      }
+    }
+
+    function render() {
+      renderBoards();
+      const count = Object.keys(state.mapping).length;
+      elements.count.textContent = `${count} / 18`;
+      elements.progress.style.width = `${(count / 18) * 100}%`;
+
+      document.querySelectorAll(".joint").forEach((joint) => {
+        const id = joint.dataset.joint;
+        const assignment = state.mapping[id];
+        joint.classList.toggle("assigned", Boolean(assignment));
+        joint.setAttribute("aria-label", `${jointLabel(id)}${assignment ? `, board ${assignment.board + 1} channel ${assignment.channel}` : ", unassigned"}`);
+      });
+
+      if (state.selected) {
+        const assignment = assignmentForPhysical(state.selected.board, state.selected.channel);
+        elements.selectedName.textContent = `Board ${state.selected.board + 1} / CH ${state.selected.channel}`;
+        elements.selectedMapping.textContent = assignment ? `Assigned to ${jointLabel(assignment[0])}` : "Not assigned. Probe it, then click a joint.";
+        elements.center.value = assignment ? assignment[1].centerUs : state.selected.centerUs;
+        elements.unassign.disabled = !assignment;
+      } else {
+        elements.selectedName.textContent = "None";
+        elements.selectedMapping.textContent = "Select a channel on the left.";
+        elements.unassign.disabled = true;
+      }
+
+      updateControls();
+      updateRangeLabels();
+    }
+
+    function updateControls() {
+      const canMove = state.connected && !state.busy && Boolean(state.selected) && elements.safety.checked;
+      elements.probe.disabled = !canMove;
+      elements.relax.disabled = !(state.connected && !state.busy && state.selected);
+      elements.emergency.disabled = !(state.connected && !state.busy);
+      elements.connect.disabled = state.busy;
+      elements.connect.textContent = state.connected ? "Disconnect" : "Connect Pico";
+      elements.connection.textContent = state.connected ? (state.busy ? "Command active" : "Pico connected") : "Disconnected";
+      elements.connection.classList.toggle("online", state.connected);
+    }
+
+    function updateRangeLabels() {
+      elements.centerValue.textContent = `${elements.center.value} us`;
+      elements.wiggleValue.textContent = `${elements.wiggle.value} us`;
+    }
+
+    async function selectPhysical(board, channel) {
+      const assignment = assignmentForPhysical(board, channel);
+      state.selected = {
+        board,
+        channel,
+        centerUs: assignment ? assignment[1].centerUs : 1500
+      };
+      render();
+      if (elements.autoProbe.checked && state.connected && elements.safety.checked) {
+        await probeSelected();
+      }
+    }
+
+    function assignSelected(jointId) {
+      if (!state.selected) {
+        const existing = state.mapping[jointId];
+        if (existing) {
+          state.selected = { board: existing.board, channel: existing.channel, centerUs: existing.centerUs };
+          render();
+          toast(`Selected the output assigned to ${jointLabel(jointId)}.`);
+        } else {
+          toast("Select and probe a physical output first.");
+        }
+        return;
+      }
+
+      const duplicate = assignmentForPhysical(state.selected.board, state.selected.channel);
+      if (duplicate) delete state.mapping[duplicate[0]];
+
+      state.mapping[jointId] = {
+        board: state.selected.board,
+        channel: state.selected.channel,
+        centerUs: Number(elements.center.value),
+        invert: false
+      };
+      saveMapping();
+      toast(`Assigned board ${state.selected.board + 1}, channel ${state.selected.channel} to ${jointLabel(jointId)}.`);
+      state.selected = null;
+      render();
+    }
+
+    async function connectSerial() {
+      if (state.connected) {
+        await disconnectSerial();
+        return;
+      }
+      if (!("serial" in navigator)) {
+        toast("Web Serial is unavailable. Use current Chrome or Edge on localhost.");
+        return;
+      }
+
+      try {
+        state.port = await navigator.serial.requestPort();
+        await state.port.open({ baudRate: 115200 });
+        state.writer = state.port.writable.getWriter();
+        state.connected = true;
+        state.reading = true;
+        updateControls();
+        addLog("Serial port opened at 115200 baud.", "ok");
+        readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
+        await delay(150);
+        await sendCommand({ cmd: "hello" });
+      } catch (error) {
+        addLog(`Connection failed: ${error.message}`, "error");
+        toast(`Could not connect: ${error.message}`);
+        await closePort();
+      }
+    }
+
+    async function disconnectSerial() {
+      try {
+        if (state.writer) await sendCommand({ cmd: "relax_all" });
+      } catch (error) {
+        addLog(`Relax before disconnect failed: ${error.message}`, "error");
+      }
+      await closePort();
+      addLog("Serial port closed.");
+    }
+
+    async function closePort() {
+      state.connected = false;
+      state.reading = false;
+      if (state.reader) {
+        try { await state.reader.cancel(); } catch (error) { /* already closed */ }
+      }
+      if (state.writer) {
+        try { state.writer.releaseLock(); } catch (error) { /* already released */ }
+      }
+      state.reader = null;
+      state.writer = null;
+      if (state.port) {
+        try { await state.port.close(); } catch (error) { /* read loop may be settling */ }
+      }
+      state.port = null;
+      updateControls();
+    }
+
+    async function readSerial() {
+      const decoder = new TextDecoder();
+      let buffer = "";
+      state.reader = state.port.readable.getReader();
+      try {
+        while (state.reading) {
+          const { value, done } = await state.reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop();
+          lines.forEach(handleSerialLine);
+        }
+      } finally {
+        try { state.reader.releaseLock(); } catch (error) { /* port closed */ }
+        state.reader = null;
+      }
+    }
+
+    function handleSerialLine(rawLine) {
+      const line = rawLine.trim();
+      if (!line) return;
+      try {
+        const message = JSON.parse(line);
+        if (message.ok === false) addLog(`Pico: ${message.error || "command failed"}`, "error");
+        else if (message.event === "ready") addLog(`Pico mapper firmware v${message.version} ready.`, "ok");
+        else addLog(`Pico: ${line}`, "ok");
+      } catch (error) {
+        addLog(`Pico text: ${line}`);
+      }
+    }
+
+    async function sendCommand(command) {
+      if (!state.writer) throw new Error("Pico is not connected");
+      const payload = new TextEncoder().encode(`${JSON.stringify(command)}\n`);
+      await state.writer.write(payload);
+      addLog(`TX ${JSON.stringify(command)}`);
+    }
+
+    async function probeSelected() {
+      if (!state.selected || !state.connected || state.busy) return;
+      if (!elements.safety.checked) {
+        toast("Confirm that the robot is elevated and clear first.");
+        return;
+      }
+
+      state.busy = true;
+      updateControls();
+      try {
+        await sendCommand({
+          cmd: "probe",
+          board: state.selected.board,
+          channel: state.selected.channel,
+          center_us: Number(elements.center.value),
+          delta_us: Number(elements.wiggle.value),
+          cycles: 2,
+          hold_ms: 140,
+          relax_after: true
+        });
+        await delay(1150);
+      } catch (error) {
+        addLog(`Probe failed: ${error.message}`, "error");
+        toast(`Probe failed: ${error.message}`);
+      } finally {
+        state.busy = false;
+        updateControls();
+      }
+    }
+
+    async function relaxSelected() {
+      if (!state.selected || !state.connected) return;
+      await sendCommand({ cmd: "relax", board: state.selected.board, channel: state.selected.channel });
+    }
+
+    async function relaxAll() {
+      if (!state.connected) return;
+      try {
+        await sendCommand({ cmd: "relax_all" });
+        toast("All PCA9685 outputs relaxed.");
+      } catch (error) {
+        toast(`Relax command failed: ${error.message}`);
+      }
+    }
+
+    function unassignSelected() {
+      if (!state.selected) return;
+      const assignment = assignmentForPhysical(state.selected.board, state.selected.channel);
+      if (!assignment) return;
+      delete state.mapping[assignment[0]];
+      saveMapping();
+      toast(`Removed ${jointLabel(assignment[0])} assignment.`);
+      render();
+    }
+
+    function exportMapping() {
+      const assignments = {};
+      for (const jointId of JOINT_IDS) {
+        const item = state.mapping[jointId];
+        if (!item) continue;
+        assignments[jointId] = {
+          board: item.board,
+          address: `0x${(0x40 + item.board).toString(16)}`,
+          channel: item.channel,
+          center_us: item.centerUs,
+          invert: item.invert
+        };
+      }
+      const output = {
+        format: "hex01-servo-map",
+        version: 1,
+        generated_at: new Date().toISOString(),
+        assignments
+      };
+      const blob = new Blob([`${JSON.stringify(output, null, 2)}\n`], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "servo-map.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importMapping(file) {
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        state.mapping = sanitizeMapping(parsed.assignments || parsed);
+        saveMapping();
+        state.selected = null;
+        render();
+        toast(`Imported ${Object.keys(state.mapping).length} assignments.`);
+      } catch (error) {
+        toast(`Import failed: ${error.message}`);
+      } finally {
+        elements.import.value = "";
+      }
+    }
+
+    function clearMapping() {
+      if (!Object.keys(state.mapping).length) return;
+      if (!window.confirm("Clear all 18 logical servo assignments?")) return;
+      state.mapping = {};
+      state.selected = null;
+      saveMapping();
+      render();
+      toast("All assignments cleared.");
+    }
+
+    function addLog(text, className = "") {
+      const row = document.createElement("div");
+      row.textContent = text;
+      if (className) row.className = className;
+      elements.log.append(row);
+      while (elements.log.children.length > 60) elements.log.firstElementChild.remove();
+      elements.log.scrollTop = elements.log.scrollHeight;
+    }
+
+    let toastTimer;
+    function toast(message) {
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 3200);
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    document.querySelectorAll(".joint").forEach((joint) => {
+      joint.addEventListener("click", () => assignSelected(joint.dataset.joint));
+      joint.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          assignSelected(joint.dataset.joint);
+        }
+      });
+    });
+
+    elements.connect.addEventListener("click", connectSerial);
+    elements.emergency.addEventListener("click", relaxAll);
+    elements.probe.addEventListener("click", probeSelected);
+    elements.relax.addEventListener("click", relaxSelected);
+    elements.unassign.addEventListener("click", unassignSelected);
+    elements.export.addEventListener("click", exportMapping);
+    elements.import.addEventListener("change", () => importMapping(elements.import.files[0]));
+    elements.clear.addEventListener("click", clearMapping);
+    elements.safety.addEventListener("change", updateControls);
+    elements.center.addEventListener("input", () => {
+      updateRangeLabels();
+      if (!state.selected) return;
+      state.selected.centerUs = Number(elements.center.value);
+      const assignment = assignmentForPhysical(state.selected.board, state.selected.channel);
+      if (assignment) {
+        assignment[1].centerUs = state.selected.centerUs;
+        saveMapping();
+      }
+    });
+    elements.wiggle.addEventListener("input", updateRangeLabels);
+
+    navigator.serial?.addEventListener("disconnect", async (event) => {
+      if (state.port && event.port === state.port) {
+        await closePort();
+        addLog("Pico disconnected.", "error");
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
