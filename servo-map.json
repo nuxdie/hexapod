@@ -1,13 +1,13 @@
 {
   "format": "hex01-servo-map",
   "version": 3,
-  "generated_at": "2026-08-02T22:55:17.942Z",
+  "generated_at": "2026-08-02T23:02:52.908Z",
   "assignments": {
     "lf.coxa": {
       "board": 1,
       "address": "0x41",
       "channel": 0,
-      "center_us": 1401,
+      "center_us": 1475,
       "min_us": 865,
       "max_us": 2779,
       "travel_degrees": 180,
@@ -20,7 +20,7 @@
       "board": 0,
       "address": "0x40",
       "channel": 7,
-      "center_us": 1022,
+      "center_us": 1161,
       "min_us": 311,
       "max_us": 2548,
       "travel_degrees": 180,
@@ -111,7 +111,7 @@
       "board": 0,
       "address": "0x40",
       "channel": 3,
-      "center_us": 1069,
+      "center_us": 1226,
       "min_us": 500,
       "max_us": 2500,
       "travel_degrees": 180,
