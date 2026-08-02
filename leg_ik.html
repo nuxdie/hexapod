@@ -275,6 +275,38 @@
       text-transform: uppercase;
     }
 
+    .graph-help {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin: -4px 0 12px;
+      color: var(--muted);
+      font: 10px/1.4 "Courier New", monospace;
+    }
+
+    .workspace-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      white-space: nowrap;
+    }
+
+    .workspace-legend span::before {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      margin-right: 5px;
+      content: "";
+      vertical-align: -1px;
+      background: rgba(95, 140, 62, 0.55);
+      border: 1px solid rgba(50, 82, 30, 0.55);
+    }
+
+    .workspace-legend .blocked::before {
+      background: rgba(162, 47, 34, 0.3);
+      border-color: rgba(120, 30, 20, 0.45);
+    }
+
     svg {
       display: block;
       width: 100%;
@@ -285,9 +317,16 @@
         #e4dfd1;
       background-size: 20px 20px;
       border: 1px solid #aaa699;
+      cursor: crosshair;
+      touch-action: none;
+      user-select: none;
     }
 
+    svg[aria-disabled="true"] { cursor: not-allowed; }
+
     .axis { stroke: #8d8b81; stroke-width: 1; stroke-dasharray: 4 4; }
+    .workspace-blocked { fill: rgba(162, 47, 34, 0.16); pointer-events: none; }
+    .workspace-allowed { fill: rgba(95, 140, 62, 0.34); pointer-events: none; }
     .segment { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linecap: square; }
     .coxa-segment { stroke: var(--signal-dark); }
     .joint-dot { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
@@ -467,6 +506,8 @@
       .diagram + .diagram { border-top: 1px solid var(--ink); border-left: 0; }
       .result-panel { grid-template-columns: 1fr; }
       .joint-result + .joint-result { border-top: 1px solid var(--line); border-left: 0; }
+      .graph-help { display: block; }
+      .workspace-legend { margin-top: 5px; }
     }
   </style>
 </head>
@@ -508,13 +549,19 @@
         </div>
 
         <div id="legSelector" class="leg-selector"></div>
+        <div class="graph-help">
+          <span>Drag either graph to reposition the preview. Hardware moves only after confirmation.</span>
+          <span class="workspace-legend"><span>Commandable</span><span class="blocked">Blocked</span></span>
+        </div>
 
         <div class="visual-grid">
           <section class="diagram">
-            <div class="diagram-title"><span>Side projection</span><span>X-Z</span></div>
+            <div class="diagram-title"><span>Side projection</span><span>Drag R-Z</span></div>
             <svg id="sideSvg" viewBox="0 0 320 240" role="img" aria-label="Side view of solved leg geometry">
-              <line class="axis" x1="20" y1="54" x2="300" y2="54"></line>
-              <line class="axis" x1="55" y1="18" x2="55" y2="222"></line>
+              <rect class="workspace-blocked" x="30" y="20" width="270" height="200"></rect>
+              <path id="sideAllowed" class="workspace-allowed"></path>
+              <line class="axis" x1="30" y1="64.4" x2="300" y2="64.4"></line>
+              <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
               <line id="sideCoxa" class="segment coxa-segment"></line>
               <line id="sideFemur" class="segment"></line>
               <line id="sideTibia" class="segment"></line>
@@ -525,12 +572,16 @@
             </svg>
           </section>
           <section class="diagram">
-            <div class="diagram-title"><span>Top projection</span><span>X-Y</span></div>
+            <div class="diagram-title"><span>Top projection</span><span>Drag X-Y</span></div>
             <svg id="topSvg" viewBox="0 0 320 240" role="img" aria-label="Top view of solved leg geometry">
-              <line class="axis" x1="20" y1="120" x2="300" y2="120"></line>
-              <line class="axis" x1="55" y1="18" x2="55" y2="222"></line>
-              <line id="topLeg" class="segment"></line>
+              <rect class="workspace-blocked" x="30" y="20" width="270" height="200"></rect>
+              <path id="topAllowed" class="workspace-allowed"></path>
+              <line class="axis" x1="30" y1="120" x2="300" y2="120"></line>
+              <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
+              <line id="topCoxa" class="segment coxa-segment"></line>
+              <line id="topReach" class="segment"></line>
               <circle id="topOrigin" class="joint-dot" r="5"></circle>
+              <circle id="topHip" class="joint-dot" r="5"></circle>
               <circle id="topFoot" class="joint-dot" r="5"></circle>
               <path id="topTarget" class="target-mark" d="m -7 0 h 14 m -7 -7 v 14"></path>
             </svg>
@@ -555,7 +606,7 @@
 
         <div class="field">
           <div class="coordinate-row">
-            <b>X</b><input id="xNumber" type="number" min="20" max="150" step="1" value="77"><input id="xRange" type="range" min="20" max="150" step="1" value="77">
+            <b>X</b><input id="xNumber" type="number" min="0" max="150" step="1" value="77"><input id="xRange" type="range" min="0" max="150" step="1" value="77">
           </div>
           <div class="coordinate-row">
             <b>Y</b><input id="yNumber" type="number" min="-100" max="100" step="1" value="0"><input id="yRange" type="range" min="-100" max="100" step="1" value="0">
@@ -599,7 +650,7 @@
 
         <div class="notice">
           <strong>Current safety boundary</strong>
-          Reachability and calibrated pulse limits are enforced over the complete straight-line path. Link-to-body, link-to-link, and ground collisions are not modeled yet.
+          Green includes geometric reach and calibrated pulse limits. Red is blocked by one of those checks. Link-to-body, link-to-link, and ground collisions are not modeled yet.
         </div>
       </aside>
     </div>
@@ -617,6 +668,10 @@
     };
     const JOINTS = ["coxa", "femur", "tibia"];
     const GEOMETRY_KEY = "hex01-leg-geometry-v1";
+    const PLOTS = {
+      side: { left: 30, right: 300, top: 20, bottom: 220, radialMin: 0, radialMax: 150, zMin: -40, zMax: 140 },
+      top: { left: 30, right: 300, top: 20, bottom: 220, xMin: 0, xMax: 150, yMin: -100, yMax: 100 }
+    };
 
     const state = {
       mapping: {},
@@ -632,6 +687,9 @@
       connecting: false,
       busy: false,
       motionCancel: false,
+      dragView: null,
+      dragPointerId: null,
+      regionKeys: { side: null, top: null },
       pending: new Map(),
       nextId: 1,
       commandQueue: Promise.resolve()
@@ -671,6 +729,8 @@
       coxaPulse: document.querySelector("#coxaPulse"),
       femurPulse: document.querySelector("#femurPulse"),
       tibiaPulse: document.querySelector("#tibiaPulse"),
+      sideSvg: document.querySelector("#sideSvg"),
+      sideAllowed: document.querySelector("#sideAllowed"),
       sideCoxa: document.querySelector("#sideCoxa"),
       sideFemur: document.querySelector("#sideFemur"),
       sideTibia: document.querySelector("#sideTibia"),
@@ -678,8 +738,12 @@
       sideKnee: document.querySelector("#sideKnee"),
       sideFoot: document.querySelector("#sideFoot"),
       sideTarget: document.querySelector("#sideTarget"),
-      topLeg: document.querySelector("#topLeg"),
+      topSvg: document.querySelector("#topSvg"),
+      topAllowed: document.querySelector("#topAllowed"),
+      topCoxa: document.querySelector("#topCoxa"),
+      topReach: document.querySelector("#topReach"),
       topOrigin: document.querySelector("#topOrigin"),
+      topHip: document.querySelector("#topHip"),
       topFoot: document.querySelector("#topFoot"),
       topTarget: document.querySelector("#topTarget"),
       toast: document.querySelector("#toast")
@@ -905,39 +969,169 @@
       }
     }
 
+    function sideToSvg(radial, z) {
+      const plot = PLOTS.side;
+      return {
+        x: plot.left + (radial - plot.radialMin) / (plot.radialMax - plot.radialMin) * (plot.right - plot.left),
+        y: plot.top + (z - plot.zMin) / (plot.zMax - plot.zMin) * (plot.bottom - plot.top)
+      };
+    }
+
+    function topToSvg(x, y) {
+      const plot = PLOTS.top;
+      return {
+        x: plot.left + (x - plot.xMin) / (plot.xMax - plot.xMin) * (plot.right - plot.left),
+        y: plot.top + (plot.yMax - y) / (plot.yMax - plot.yMin) * (plot.bottom - plot.top)
+      };
+    }
+
+    function svgCoordinates(svg, event) {
+      const bounds = svg.getBoundingClientRect();
+      return {
+        x: (event.clientX - bounds.left) / bounds.width * 320,
+        y: (event.clientY - bounds.top) / bounds.height * 240
+      };
+    }
+
+    function workspaceRegionKey(view, point) {
+      const model = geometry();
+      const servos = JOINTS.map((joint) => state.mapping[`${state.selectedLeg}.${joint}`] || null);
+      const slice = view === "side" ? Math.atan2(point.y, point.x) : point.z;
+      return JSON.stringify([state.selectedLeg, model, servos, view, Number(slice).toFixed(3)]);
+    }
+
+    function renderWorkspaceRegion(view, point) {
+      const key = workspaceRegionKey(view, point);
+      if (state.regionKeys[view] === key) return;
+      state.regionKeys[view] = key;
+      const columns = 60;
+      const rows = 50;
+      const plot = PLOTS[view];
+      const cellWidth = (plot.right - plot.left) / columns;
+      const cellHeight = (plot.bottom - plot.top) / rows;
+      const yaw = Math.atan2(point.y, point.x);
+      let path = "";
+
+      for (let row = 0; row < rows; row += 1) {
+        for (let column = 0; column < columns; column += 1) {
+          const pixelX = plot.left + (column + 0.5) * cellWidth;
+          const pixelY = plot.top + (row + 0.5) * cellHeight;
+          let sample;
+          if (view === "side") {
+            const radial = plot.radialMin
+              + (pixelX - plot.left) / (plot.right - plot.left) * (plot.radialMax - plot.radialMin);
+            const z = plot.zMin
+              + (pixelY - plot.top) / (plot.bottom - plot.top) * (plot.zMax - plot.zMin);
+            sample = { x: radial * Math.cos(yaw), y: radial * Math.sin(yaw), z };
+          } else {
+            const x = plot.xMin
+              + (pixelX - plot.left) / (plot.right - plot.left) * (plot.xMax - plot.xMin);
+            const y = plot.yMax
+              - (pixelY - plot.top) / (plot.bottom - plot.top) * (plot.yMax - plot.yMin);
+            sample = { x, y, z: point.z };
+          }
+          if (solveIK(sample).valid) {
+            const x = plot.left + column * cellWidth;
+            const y = plot.top + row * cellHeight;
+            path += `M${x.toFixed(1)} ${y.toFixed(1)}h${(cellWidth + 0.2).toFixed(1)}v${(cellHeight + 0.2).toFixed(1)}h-${(cellWidth + 0.2).toFixed(1)}z`;
+          }
+        }
+      }
+      elements[`${view}Allowed`].setAttribute("d", path);
+    }
+
+    function renderWorkspaceRegions(point) {
+      if (state.dragView !== "top") renderWorkspaceRegion("side", point);
+      if (state.dragView !== "side") renderWorkspaceRegion("top", point);
+    }
+
     function renderDiagrams(solution, point) {
       const model = geometry();
       const angles = solution.angles || model.centers;
+      const coxa = radians(angles.coxa);
       const femur = radians(angles.femur);
       const tibia = radians(angles.tibia);
-      const sideScale = 1.55;
-      const origin = { x: 55, y: 54 };
-      const hip = { x: origin.x + model.coxa * sideScale, y: origin.y };
-      const knee = {
-        x: hip.x + model.femur * Math.cos(femur) * sideScale,
-        y: hip.y + model.femur * Math.sin(femur) * sideScale
-      };
-      const foot = {
-        x: knee.x + model.tibia * Math.cos(femur + tibia) * sideScale,
-        y: knee.y + model.tibia * Math.sin(femur + tibia) * sideScale
-      };
+      const origin = sideToSvg(0, 0);
+      const hip = sideToSvg(model.coxa, 0);
+      const kneeRadial = model.coxa + model.femur * Math.cos(femur);
+      const kneeZ = model.femur * Math.sin(femur);
+      const footRadial = kneeRadial + model.tibia * Math.cos(femur + tibia);
+      const footZ = kneeZ + model.tibia * Math.sin(femur + tibia);
+      const knee = sideToSvg(kneeRadial, kneeZ);
+      const foot = sideToSvg(footRadial, footZ);
       setSvgLine(elements.sideCoxa, origin.x, origin.y, hip.x, hip.y);
       setSvgLine(elements.sideFemur, hip.x, hip.y, knee.x, knee.y);
       setSvgLine(elements.sideTibia, knee.x, knee.y, foot.x, foot.y);
       setSvgPoint(elements.sideHip, hip.x, hip.y);
       setSvgPoint(elements.sideKnee, knee.x, knee.y);
       setSvgPoint(elements.sideFoot, foot.x, foot.y);
-      setSvgPoint(elements.sideTarget, origin.x + Math.hypot(point.x, point.y) * sideScale, origin.y + point.z * sideScale);
+      const sideTarget = sideToSvg(Math.hypot(point.x, point.y), point.z);
+      setSvgPoint(elements.sideTarget, sideTarget.x, sideTarget.y);
 
-      const topScale = 1.55;
-      const topOrigin = { x: 55, y: 120 };
-      const topFoot = { x: topOrigin.x + point.x * topScale, y: topOrigin.y - point.y * topScale };
-      setSvgLine(elements.topLeg, topOrigin.x, topOrigin.y, topFoot.x, topFoot.y);
+      const topOrigin = topToSvg(0, 0);
+      const topHip = topToSvg(model.coxa * Math.cos(coxa), model.coxa * Math.sin(coxa));
+      const topFoot = topToSvg(footRadial * Math.cos(coxa), footRadial * Math.sin(coxa));
+      const topTarget = topToSvg(point.x, point.y);
+      setSvgLine(elements.topCoxa, topOrigin.x, topOrigin.y, topHip.x, topHip.y);
+      setSvgLine(elements.topReach, topHip.x, topHip.y, topFoot.x, topFoot.y);
       setSvgPoint(elements.topOrigin, topOrigin.x, topOrigin.y);
+      setSvgPoint(elements.topHip, topHip.x, topHip.y);
       setSvgPoint(elements.topFoot, topFoot.x, topFoot.y);
-      setSvgPoint(elements.topTarget, topFoot.x, topFoot.y);
+      setSvgPoint(elements.topTarget, topTarget.x, topTarget.y);
       elements.sideTarget.classList.toggle("invalid", !solution.valid);
       elements.topTarget.classList.toggle("invalid", !solution.valid);
+    }
+
+    function updateTargetFromGraph(view, event) {
+      if (state.busy) return;
+      const svg = elements[`${view}Svg`];
+      const pixel = svgCoordinates(svg, event);
+      const point = target();
+      const plot = PLOTS[view];
+      if (view === "side") {
+        const x = clamp(pixel.x, plot.left, plot.right);
+        const y = clamp(pixel.y, plot.top, plot.bottom);
+        const radial = plot.radialMin
+          + (x - plot.left) / (plot.right - plot.left) * (plot.radialMax - plot.radialMin);
+        const z = plot.zMin
+          + (y - plot.top) / (plot.bottom - plot.top) * (plot.zMax - plot.zMin);
+        const yaw = Math.atan2(point.y, point.x);
+        point.x = radial * Math.cos(yaw);
+        point.y = radial * Math.sin(yaw);
+        point.z = z;
+      } else {
+        const x = clamp(pixel.x, plot.left, plot.right);
+        const y = clamp(pixel.y, plot.top, plot.bottom);
+        point.x = plot.xMin
+          + (x - plot.left) / (plot.right - plot.left) * (plot.xMax - plot.xMin);
+        point.y = plot.yMax
+          - (y - plot.top) / (plot.bottom - plot.top) * (plot.yMax - plot.yMin);
+      }
+      setTargetInputs(point);
+      render();
+    }
+
+    function beginGraphDrag(view, event) {
+      if (state.busy || event.button !== 0) return;
+      state.dragView = view;
+      state.dragPointerId = event.pointerId;
+      elements[`${view}Svg`].setPointerCapture(event.pointerId);
+      updateTargetFromGraph(view, event);
+      event.preventDefault();
+    }
+
+    function continueGraphDrag(view, event) {
+      if (state.dragView !== view || state.dragPointerId !== event.pointerId) return;
+      updateTargetFromGraph(view, event);
+      event.preventDefault();
+    }
+
+    function endGraphDrag(view, event) {
+      if (state.dragView !== view || state.dragPointerId !== event.pointerId) return;
+      state.dragView = null;
+      state.dragPointerId = null;
+      render();
+      event.preventDefault();
     }
 
     function renderLegSelector() {
@@ -963,6 +1157,7 @@
         elements[`${joint}Angle`].textContent = Number.isFinite(displayAngle) ? `${displayAngle.toFixed(1)} deg` : "--";
         elements[`${joint}Pulse`].textContent = solution.pulses?.[joint] ? `${solution.pulses[joint].rounded} us` : "-- us";
       }
+      renderWorkspaceRegions(target());
       renderDiagrams(solution, target());
 
       let path = null;
@@ -995,6 +1190,8 @@
       }
       elements.stepSize.disabled = state.busy;
       elements.frameDelay.disabled = state.busy;
+      elements.sideSvg.setAttribute("aria-disabled", String(state.busy));
+      elements.topSvg.setAttribute("aria-disabled", String(state.busy));
 
       elements.verdict.className = `verdict${state.busy ? " busy" : solution.valid ? "" : " invalid"}`;
       elements.verdict.firstElementChild.textContent = state.busy ? "Interpolating and commanding the validated path." : solution.reason;
@@ -1313,6 +1510,14 @@
           render();
         });
       }
+    }
+    for (const view of ["side", "top"]) {
+      const svg = elements[`${view}Svg`];
+      svg.addEventListener("pointerdown", (event) => beginGraphDrag(view, event));
+      svg.addEventListener("pointermove", (event) => continueGraphDrag(view, event));
+      svg.addEventListener("pointerup", (event) => endGraphDrag(view, event));
+      svg.addEventListener("pointercancel", (event) => endGraphDrag(view, event));
+      svg.addEventListener("lostpointercapture", (event) => endGraphDrag(view, event));
     }
     for (const input of [
       elements.coxaLength, elements.femurLength, elements.tibiaLength,
