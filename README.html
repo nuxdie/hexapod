@@ -643,6 +643,7 @@
         <a href="servo_mapper.html">Servo mapper</a>
         <a href="servo_calibrator.html">Calibration</a>
         <a href="servo_control.html">Manual control</a>
+        <a href="leg_ik.html">Leg IK</a>
       </div>
       <div class="hero">
         <div>
@@ -910,6 +911,7 @@
             <a href="servo_mapper.html">servo_mapper.html</a>
             <a href="servo_calibrator.html">servo_calibrator.html</a>
             <a href="servo_control.html">servo_control.html</a>
+            <a href="leg_ik.html">leg_ik.html</a>
             <a href="servo_mapper_pico.py">servo_mapper_pico.py</a>
             <a href="servo-map.json">servo-map.json</a>
             <span>body.3mf</span>
@@ -932,6 +934,10 @@
             <strong>Manual servo control</strong>
             <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control mapped joints. Position mode follows each confirmed calibration envelope; commands are coalesced to avoid a serial backlog. Center all moves the 18 joints sequentially to reduce the current step, while Relax all disables every PWM output.</p>
           </div>
+          <div class="note">
+            <strong>Single-leg inverse kinematics</strong>
+            <p>Open <a href="leg_ik.html"><code>http://localhost:8000/leg_ik.html</code></a> to preview and command one foot in leg-local XYZ coordinates. The current model uses a 20 mm coxa, 45 mm femur, 70 mm tibia, horizontal femur center, and 80-degree tibia center. Every straight-line path is checked for geometric reach and calibrated pulse limits before motion; collision checking is a later gate.</p>
+          </div>
           <div class="note warning">
             <strong>Current code status</strong>
             <p><code>pca9685_bringup.py</code> initializes both PCA9685 boards unconditionally and loops over all 16 channels on each board. That is a 32-channel test, not an 18-servo test. Before connecting the complete robot, revise it to map exactly 18 named joints and only command channels that are physically populated.</p>
@@ -942,7 +948,7 @@
 
     <footer>
       <span>HEX-01 / HEXAPOD DEVELOPMENT DOSSIER</span>
-      <span>Next gate: safe single-leg calibration and IK</span>
+      <span>Next gate: validate single-leg IK, then map coupled collision limits</span>
     </footer>
   </div>
 </body>
