@@ -49,7 +49,7 @@
     }
 
     .app {
-      width: min(100%, 1480px);
+      width: 100%;
       min-height: 100vh;
       margin: 0 auto;
       background: var(--paper);
@@ -358,6 +358,43 @@
     .field output { color: var(--signal-dark); font-size: 14px; }
     input[type="range"] { width: 100%; accent-color: var(--signal-dark); }
 
+    .pulse-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .pulse-entry input,
+    .window-row input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      font-family: "Courier New", monospace;
+    }
+
+    .pulse-entry span { font: 800 11px/1 "Courier New", monospace; }
+
+    .window-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    .window-row label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font: 800 9px/1.2 "Courier New", monospace;
+      text-transform: uppercase;
+    }
+
     .range-labels {
       display: flex;
       justify-content: space-between;
@@ -505,6 +542,22 @@
 
     .toast.show { opacity: 1; transform: translateY(0); }
 
+    @media (min-width: 1800px) {
+      .workspace { grid-template-columns: clamp(320px, 18vw, 420px) minmax(900px, 1fr) clamp(350px, 20vw, 460px); }
+      main {
+        display: grid;
+        grid-template-columns: minmax(500px, 0.9fr) minmax(620px, 1.1fr);
+        gap: 20px 28px;
+        align-content: start;
+      }
+      main > .panel-head { grid-column: 1 / -1; margin-bottom: 0; }
+      main > .selected-card { grid-column: 1; grid-row: 2; margin-bottom: 0; }
+      main > .procedure { grid-column: 2; grid-row: 2; margin-bottom: 0; }
+      main > .live-control { grid-column: 1; grid-row: 3; margin-bottom: 0; }
+      main > .capture-grid { grid-column: 2; grid-row: 3; }
+      main > .warning { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
+    }
+
     @media (max-width: 1120px) {
       .workspace { grid-template-columns: 260px minmax(500px, 1fr); }
       .record { grid-column: 1 / -1; border-top: 1px solid var(--ink); border-left: 0; }
@@ -598,9 +651,14 @@
 
         <div class="live-control">
           <div class="field">
-            <label for="pulseSlider">Live test pulse <output id="pulseValue">1500 us</output></label>
-            <input id="pulseSlider" type="range" min="500" max="2500" step="5" value="1500">
-            <div class="range-labels"><span>500 us</span><span>drag sends at max 15 Hz</span><span>2500 us</span></div>
+            <label for="pulseSlider">Live test pulse <output id="pulseValue">1500 µs</output></label>
+            <div class="pulse-entry"><input id="pulseInput" type="number" step="1" value="1500"><span>µs</span></div>
+            <input id="pulseSlider" type="range" min="0" max="5000" step="1" value="1500">
+            <div class="range-labels"><span id="windowMinLabel">0 µs</span><span>adjustable view / max 15 Hz</span><span id="windowMaxLabel">5000 µs</span></div>
+            <div class="window-row">
+              <label>Window start<input id="windowMin" type="number" step="100" value="0"></label>
+              <label>Window end<input id="windowMax" type="number" step="100" value="5000"></label>
+            </div>
           </div>
           <div class="nudge-row">
             <button class="nudge" data-delta="-25" type="button">-25</button>
@@ -614,7 +672,7 @@
         <div class="capture-grid">
           <article class="capture">
             <h3>Minimum pulse</h3>
-            <output id="minValue">500 us</output>
+            <output id="minValue">500 µs</output>
             <div class="capture-actions">
               <button class="button" data-capture="min" type="button">Capture current</button>
               <button class="button secondary" data-test="min" type="button">Test minimum</button>
@@ -622,7 +680,7 @@
           </article>
           <article class="capture">
             <h3>Neutral center</h3>
-            <output id="centerValue">1500 us</output>
+            <output id="centerValue">1500 µs</output>
             <div class="capture-actions">
               <button class="button" data-capture="center" type="button">Capture current</button>
               <button class="button secondary" data-test="center" type="button">Test center</button>
@@ -630,7 +688,7 @@
           </article>
           <article class="capture">
             <h3>Maximum pulse</h3>
-            <output id="maxValue">2500 us</output>
+            <output id="maxValue">2500 µs</output>
             <div class="capture-actions">
               <button class="button" data-capture="max" type="button">Capture current</button>
               <button class="button secondary" data-test="max" type="button">Test maximum</button>
@@ -640,7 +698,7 @@
 
         <div class="warning">
           <strong>Safe limit rule</strong>
-          For a mechanically limited servo, capture a value 20-50 us back from the first sign of buzzing or hard-stop contact. A 360-degree positional servo may wrap instead of hitting a stop; use the widest range that still gives distinct, repeatable positions.
+          There is no hobby-servo pulse guard in this tool. For a mechanically limited servo, capture a value 20-50 µs back from the first sign of buzzing or hard-stop contact. The only hard boundary is the 50 Hz PCA9685 frame: 0-19,995 µs.
         </div>
       </main>
 
@@ -679,8 +737,10 @@
     "use strict";
 
     const STORAGE_KEY = "hex01-servo-calibration-v3";
-    const GLOBAL_MIN_US = 500;
-    const GLOBAL_MAX_US = 2500;
+    const INITIAL_WINDOW_MIN_US = 0;
+    const INITIAL_WINDOW_MAX_US = 5000;
+    const HARDWARE_MIN_US = 0;
+    const HARDWARE_MAX_US = 19995;
     const JOINT_IDS = [
       "lf.coxa", "lf.femur", "lf.tibia",
       "lm.coxa", "lm.femur", "lm.tibia",
@@ -725,7 +785,12 @@
       selectedName: document.querySelector("#selectedName"),
       selectedAddress: document.querySelector("#selectedAddress"),
       pulse: document.querySelector("#pulseSlider"),
+      pulseInput: document.querySelector("#pulseInput"),
       pulseValue: document.querySelector("#pulseValue"),
+      windowMin: document.querySelector("#windowMin"),
+      windowMax: document.querySelector("#windowMax"),
+      windowMinLabel: document.querySelector("#windowMinLabel"),
+      windowMaxLabel: document.querySelector("#windowMaxLabel"),
       send: document.querySelector("#sendButton"),
       minValue: document.querySelector("#minValue"),
       centerValue: document.querySelector("#centerValue"),
@@ -748,8 +813,44 @@
       return `${LEG_NAMES[leg]} ${JOINT_NAMES[joint].toLowerCase()}`;
     }
 
-    function clampPulse(value) {
-      return Math.max(GLOBAL_MIN_US, Math.min(GLOBAL_MAX_US, Math.round(Number(value) / 5) * 5));
+    function normalizePulse(value, fallback = 1500) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? Math.round(numeric) : fallback;
+    }
+
+    function applySliderWindow() {
+      const low = normalizePulse(elements.windowMin.value, INITIAL_WINDOW_MIN_US);
+      const high = normalizePulse(elements.windowMax.value, INITIAL_WINDOW_MAX_US);
+      if (low >= high) {
+        toast("Slider window start must be lower than its end.");
+        return false;
+      }
+      elements.windowMin.value = low;
+      elements.windowMax.value = high;
+      elements.pulse.min = low;
+      elements.pulse.max = high;
+      elements.windowMinLabel.textContent = `${low} µs`;
+      elements.windowMaxLabel.textContent = `${high} µs`;
+      return true;
+    }
+
+    function showPulse(pulseUs, expandWindow = true) {
+      const pulse = normalizePulse(pulseUs);
+      if (expandWindow) {
+        let low = normalizePulse(elements.windowMin.value, INITIAL_WINDOW_MIN_US);
+        let high = normalizePulse(elements.windowMax.value, INITIAL_WINDOW_MAX_US);
+        if (pulse < low) low = pulse;
+        if (pulse > high) high = pulse;
+        if (low === high) high = low + 1;
+        elements.windowMin.value = low;
+        elements.windowMax.value = high;
+        applySliderWindow();
+      }
+      elements.pulseInput.value = pulse;
+      elements.pulse.value = pulse;
+      elements.pulseValue.textContent = `${pulse} µs`;
+      if (state.selectedId) state.servos[state.selectedId].currentUs = pulse;
+      return pulse;
     }
 
     function sanitizeConfig(input) {
@@ -763,9 +864,9 @@
         const board = Number(item.board);
         const channel = Number(item.channel);
         if ((board !== 0 && board !== 1) || channel < 0 || channel > 15) continue;
-        const minUs = clampPulse(Number.isFinite(Number(item.min_us)) ? item.min_us : GLOBAL_MIN_US);
-        const maxUs = clampPulse(Number.isFinite(Number(item.max_us)) ? item.max_us : GLOBAL_MAX_US);
-        const centerUs = clampPulse(Number.isFinite(Number(item.center_us)) ? item.center_us : 1500);
+        const minUs = normalizePulse(item.min_us, 500);
+        const maxUs = normalizePulse(item.max_us, 2500);
+        const centerUs = normalizePulse(item.center_us, 1500);
         const requestedTravel = Number(item.travel_degrees);
         const valid = minUs < centerUs && centerUs < maxUs;
         clean[id] = {
@@ -817,7 +918,7 @@
     function applyConfig(config, sourceName) {
       state.servos = config;
       state.selectedId = state.servos[state.selectedId] ? state.selectedId : JOINT_IDS.find((id) => state.servos[id]) || null;
-      if (state.selectedId) elements.pulse.value = state.servos[state.selectedId].currentUs;
+      if (state.selectedId) showPulse(state.servos[state.selectedId].currentUs);
       persistDraft();
       render();
       addLog(`Loaded ${Object.keys(config).length} joints from ${sourceName}.`, "ok");
@@ -881,6 +982,9 @@
     function calibrationValidity(servo) {
       if (!servo) return { valid: false, message: "Select a mapped joint." };
       if (!servo.minCaptured || !servo.maxCaptured) return { valid: false, message: "Capture both minimum and maximum pulses." };
+      if ([servo.minUs, servo.centerUs, servo.maxUs].some((value) => value < HARDWARE_MIN_US || value > HARDWARE_MAX_US)) {
+        return { valid: false, message: "Captured values must fit inside the physical 0-19,995 µs PWM frame." };
+      }
       if (!(servo.minUs < servo.centerUs && servo.centerUs < servo.maxUs)) {
         return { valid: false, message: "Required order: minimum < center < maximum." };
       }
@@ -897,17 +1001,17 @@
       if (servo) {
         elements.selectedName.textContent = jointLabel(state.selectedId);
         elements.selectedAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel}`;
-        if (!elements.pulse.matches(":focus")) elements.pulse.value = servo.currentUs;
-        elements.minValue.textContent = `${servo.minUs} us`;
-        elements.centerValue.textContent = `${servo.centerUs} us`;
-        elements.maxValue.textContent = `${servo.maxUs} us`;
+        if (!elements.pulse.matches(":focus") && !elements.pulseInput.matches(":focus")) showPulse(servo.currentUs);
+        elements.minValue.textContent = `${servo.minUs} µs`;
+        elements.centerValue.textContent = `${servo.centerUs} µs`;
+        elements.maxValue.textContent = `${servo.maxUs} µs`;
         elements.travel.value = String(servo.travelDegrees);
         elements.invert.checked = servo.invert;
       } else {
         elements.selectedName.textContent = "None selected";
         elements.selectedAddress.textContent = "Load a map and select a joint.";
       }
-      elements.pulseValue.textContent = `${elements.pulse.value} us`;
+      elements.pulseValue.textContent = `${elements.pulseInput.value} µs`;
 
       const validity = calibrationValidity(servo);
       elements.validity.textContent = servo && servo.calibrated ? "Calibration complete. Editing a captured value will reopen it." : validity.message;
@@ -933,7 +1037,7 @@
       cancelLive();
       if (state.activeId && state.connected) await relaxSelected();
       state.selectedId = id;
-      elements.pulse.value = state.servos[id].currentUs;
+      showPulse(state.servos[id].currentUs);
       render();
     }
 
@@ -956,7 +1060,7 @@
         readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
         await delay(150);
         const hello = await sendCommand({ cmd: "hello" }, 2500);
-        if (Number(hello.version) < 4) throw new Error(`firmware v${hello.version} is too old; v4 is required`);
+        if (Number(hello.version) < 5) throw new Error(`firmware v${hello.version} is too old; v5 is required`);
         const available = new Set((hello.available_addresses || []).map(Number));
         if (!available.has(0x40) && !available.has(0x41)) throw new Error("no PCA9685 board initialized");
         await sendCommand({ cmd: "relax_all" });
@@ -1077,13 +1181,13 @@
     async function setPulse(id, pulseUs, quiet = false) {
       if (!id || !state.connected || !elements.safety.checked) return false;
       const servo = state.servos[id];
-      const pulse = clampPulse(pulseUs);
+      const pulse = normalizePulse(pulseUs);
       try {
         if (state.activeId && state.activeId !== id) await relaxSelected();
         await enqueue({ cmd: "set_pulse", board: servo.board, channel: servo.channel, pulse_us: pulse });
         state.activeId = id;
         servo.currentUs = pulse;
-        if (!quiet) addLog(`${id} -> ${pulse} us`, "ok");
+        if (!quiet) addLog(`${id} -> ${pulse} µs`, "ok");
         return true;
       } catch (error) {
         cancelLive();
@@ -1151,7 +1255,7 @@
     function captureValue(kind) {
       const servo = state.servos[state.selectedId];
       if (!servo) return;
-      const pulse = clampPulse(elements.pulse.value);
+      const pulse = normalizePulse(elements.pulseInput.value);
       if (kind === "min") {
         servo.minUs = pulse;
         servo.minCaptured = true;
@@ -1164,15 +1268,14 @@
       servo.calibrated = false;
       persistDraft();
       render();
-      addLog(`${state.selectedId} ${kind} captured at ${pulse} us.`);
+      addLog(`${state.selectedId} ${kind} captured at ${pulse} µs.`);
     }
 
     function testValue(kind) {
       const servo = state.servos[state.selectedId];
       if (!servo) return;
       const pulse = kind === "min" ? servo.minUs : kind === "center" ? servo.centerUs : servo.maxUs;
-      elements.pulse.value = pulse;
-      elements.pulseValue.textContent = `${pulse} us`;
+      showPulse(pulse);
       setPulse(state.selectedId, pulse);
     }
 
@@ -1196,9 +1299,8 @@
     }
 
     function changePulse(delta) {
-      const pulse = clampPulse(Number(elements.pulse.value) + delta);
-      elements.pulse.value = pulse;
-      elements.pulseValue.textContent = `${pulse} us`;
+      const pulse = normalizePulse(elements.pulseInput.value) + delta;
+      showPulse(pulse);
       scheduleLive(pulse);
     }
 
@@ -1274,12 +1376,20 @@
       if (!elements.safety.checked && state.connected) relaxAll();
     });
     elements.pulse.addEventListener("input", () => {
-      elements.pulseValue.textContent = `${elements.pulse.value} us`;
-      if (state.selectedId) state.servos[state.selectedId].currentUs = Number(elements.pulse.value);
-      scheduleLive(elements.pulse.value);
+      const pulse = showPulse(elements.pulse.value, false);
+      scheduleLive(pulse);
     });
     elements.pulse.addEventListener("change", () => scheduleLive(elements.pulse.value));
-    elements.send.addEventListener("click", () => setPulse(state.selectedId, elements.pulse.value));
+    elements.pulseInput.addEventListener("input", () => {
+      elements.pulseValue.textContent = `${elements.pulseInput.value || "--"} µs`;
+    });
+    elements.pulseInput.addEventListener("change", () => {
+      const pulse = showPulse(elements.pulseInput.value);
+      scheduleLive(pulse);
+    });
+    elements.windowMin.addEventListener("change", applySliderWindow);
+    elements.windowMax.addEventListener("change", applySliderWindow);
+    elements.send.addEventListener("click", () => setPulse(state.selectedId, elements.pulseInput.value));
     document.querySelectorAll(".nudge[data-delta]").forEach((button) => button.addEventListener("click", () => changePulse(Number(button.dataset.delta))));
     document.querySelectorAll("[data-capture]").forEach((button) => button.addEventListener("click", () => captureValue(button.dataset.capture)));
     document.querySelectorAll("[data-test]").forEach((button) => button.addEventListener("click", () => testValue(button.dataset.test)));
@@ -1318,6 +1428,7 @@
       }
     });
 
+    applySliderWindow();
     render();
     loadDefaultConfig();
   </script>

@@ -51,7 +51,7 @@
     }
 
     .app {
-      width: min(100%, var(--max));
+      width: 100%;
       min-height: 100vh;
       margin: 0 auto;
       background: var(--paper);
@@ -783,11 +783,11 @@
           </div>
 
           <div class="field">
-            <label for="centerPulse">Center pulse <output id="centerValue">1500 us</output></label>
+            <label for="centerPulse">Center pulse <output id="centerValue">1500 µs</output></label>
             <input id="centerPulse" type="range" min="900" max="2100" step="5" value="1500">
           </div>
           <div class="field">
-            <label for="wigglePulse">Wiggle each way <output id="wiggleValue">40 us</output></label>
+            <label for="wigglePulse">Wiggle each way <output id="wiggleValue">40 µs</output></label>
             <input id="wigglePulse" type="range" min="5" max="60" step="5" value="40">
           </div>
 
@@ -1006,8 +1006,8 @@
     }
 
     function updateRangeLabels() {
-      elements.centerValue.textContent = `${elements.center.value} us`;
-      elements.wiggleValue.textContent = `${elements.wiggle.value} us`;
+      elements.centerValue.textContent = `${elements.center.value} µs`;
+      elements.wiggleValue.textContent = `${elements.wiggle.value} µs`;
     }
 
     async function selectPhysical(board, channel) {

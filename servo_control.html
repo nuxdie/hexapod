@@ -46,7 +46,7 @@
     }
 
     .app {
-      width: min(100%, 1440px);
+      width: 100%;
       min-height: 100vh;
       margin: 0 auto;
       background: var(--paper);
@@ -599,7 +599,7 @@
         <div class="mark">HEX-01</div>
         <div>
           <h1>Manual servo control</h1>
-          <div class="subtitle">Mapped joint pulse console / firmware v4</div>
+          <div class="subtitle">Mapped joint pulse console / firmware v5</div>
           <div class="tool-menu" aria-label="Project tools">
             <a href="README.html">Build dossier</a>
             <a href="servo_mapper.html">Servo mapper</a>
@@ -646,7 +646,7 @@
       <aside>
         <div class="section-head">
           <h2>Selected output</h2>
-          <span>500-2500 us position range</span>
+          <span>Per-joint calibrated pulse range</span>
         </div>
 
         <div class="selected-card">
@@ -662,7 +662,7 @@
 
         <div id="positionPanel" class="control-panel">
           <div class="field">
-            <label for="pulseSlider">Target pulse <output id="pulseValue">1500 us</output></label>
+            <label for="pulseSlider">Target pulse <output id="pulseValue">1500 µs</output></label>
             <input id="pulseSlider" type="range" min="500" max="2500" step="5" value="1500">
             <div class="range-labels"><span id="pulseMinLabel">500</span><span id="centerLabel">center 1500</span><span id="pulseMaxLabel">2500</span></div>
           </div>
@@ -677,18 +677,18 @@
           <button id="sendPulseButton" class="button full-button" type="button" disabled>Send pulse and hold</button>
           <div class="notice">
             <strong>Position test</strong>
-            Live mode follows the slider. The full 500-2500 us range may exceed a joint's mechanical travel; back away immediately if a servo buzzes or presses against a stop.
+            Live mode follows the slider. Uncalibrated joints use 500-2500 µs; back away immediately if a servo buzzes or presses against a stop.
           </div>
         </div>
 
         <div id="continuousPanel" class="control-panel" hidden>
           <div class="field">
-            <label for="continuousCenter">Neutral / stop pulse <output id="continuousCenterValue">1500 us</output></label>
+            <label for="continuousCenter">Neutral / stop pulse <output id="continuousCenterValue">1500 µs</output></label>
             <input id="continuousCenter" type="range" min="500" max="2500" step="5" value="1500">
             <div class="range-labels"><span>500</span><span>adjust until rotation stops</span><span>2500</span></div>
           </div>
           <div class="field">
-            <label for="speedSlider">Drive offset <output id="speedValue">100 us</output></label>
+            <label for="speedSlider">Drive offset <output id="speedValue">100 µs</output></label>
             <input id="speedSlider" type="range" min="20" max="400" step="10" value="100">
             <div class="range-labels"><span>gentle</span><span>hold a direction button</span><span>fast</span></div>
           </div>
@@ -817,12 +817,14 @@
         if ((board !== 0 && board !== 1) || channel < 0 || channel > 15 || !Number.isFinite(centerUs)) continue;
         const requestedMin = Number(item.min_us ?? item.minUs);
         const requestedMax = Number(item.max_us ?? item.maxUs);
-        const safeCenter = Math.max(500, Math.min(2500, centerUs));
-        const safeMin = Math.max(500, Math.min(2500, requestedMin));
-        const safeMax = Math.max(500, Math.min(2500, requestedMax));
+        const safeCenter = Math.round(centerUs);
+        const safeMin = Math.round(requestedMin);
+        const safeMax = Math.round(requestedMax);
         const limitsValid = Boolean(item.calibrated)
           && Number.isFinite(requestedMin)
           && Number.isFinite(requestedMax)
+          && safeMin >= 0
+          && safeMax <= 19995
           && safeMin < safeCenter
           && safeCenter < safeMax;
         clean[id] = {
@@ -914,7 +916,7 @@
       const servo = state.mapping[state.selectedId];
       if (servo) {
         elements.jointName.textContent = jointLabel(state.selectedId);
-        elements.jointAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel} / ${servo.minUs}-${servo.maxUs} us${servo.calibrated ? " calibrated" : " global range"}`;
+        elements.jointAddress.textContent = `PCA 0x${(0x40 + servo.board).toString(16)} / channel ${servo.channel} / ${servo.minUs}-${servo.maxUs} µs${servo.calibrated ? " calibrated" : " global range"}`;
         elements.centerLabel.textContent = `center ${servo.centerUs}`;
         elements.pulse.min = servo.minUs;
         elements.pulse.max = servo.maxUs;
@@ -926,9 +928,9 @@
         elements.jointAddress.textContent = "Choose a mapped joint from the mechanism.";
         elements.centerLabel.textContent = "center --";
       }
-      elements.pulseValue.textContent = `${elements.pulse.value} us`;
-      elements.speedValue.textContent = `${elements.speed.value} us`;
-      elements.continuousCenterValue.textContent = `${elements.continuousCenter.value} us`;
+      elements.pulseValue.textContent = `${elements.pulse.value} µs`;
+      elements.speedValue.textContent = `${elements.speed.value} µs`;
+      elements.continuousCenterValue.textContent = `${elements.continuousCenter.value} µs`;
       const activeCount = state.activeIds.size;
       const onlyActive = activeCount === 1 ? [...state.activeIds][0] : null;
       elements.outputState.textContent = activeCount === 0
@@ -1003,7 +1005,7 @@
         readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
         await delay(150);
         const hello = await sendCommand({ cmd: "hello" }, 2500);
-        if (Number(hello.version) < 4) throw new Error(`firmware v${hello.version} is too old; v4 is required`);
+        if (Number(hello.version) < 5) throw new Error(`firmware v${hello.version} is too old; v5 is required`);
         const available = new Set((hello.available_addresses || []).map(Number));
         if (!available.has(0x40) && !available.has(0x41)) throw new Error("no PCA9685 board initialized");
         await sendCommand({ cmd: "relax_all" });
@@ -1154,7 +1156,7 @@
           state.pulseValues[id] = pulse;
           if (state.selectedId === id) elements.pulse.value = pulse;
           render();
-          addLog(`${id} -> ${pulse} us`, "ok");
+          addLog(`${id} -> ${pulse} µs`, "ok");
         }
         return true;
       } catch (error) {
@@ -1300,7 +1302,7 @@
       if (!servo) return;
       const next = Math.max(servo.minUs, Math.min(servo.maxUs, Number(elements.pulse.value) + delta));
       elements.pulse.value = next;
-      elements.pulseValue.textContent = `${next} us`;
+      elements.pulseValue.textContent = `${next} µs`;
       setSelectedPulse(next);
     }
 
@@ -1337,7 +1339,7 @@
     });
     elements.mapInput.addEventListener("change", () => importMap(elements.mapInput.files[0]));
     elements.pulse.addEventListener("input", () => {
-      elements.pulseValue.textContent = `${elements.pulse.value} us`;
+      elements.pulseValue.textContent = `${elements.pulse.value} µs`;
       if (state.selectedId) state.pulseValues[state.selectedId] = Number(elements.pulse.value);
       scheduleLivePulse(elements.pulse.value);
     });
@@ -1353,9 +1355,9 @@
       cancelLivePulse();
       if (state.selectedId) setSelectedPulse(state.mapping[state.selectedId].centerUs);
     });
-    elements.speed.addEventListener("input", () => { elements.speedValue.textContent = `${elements.speed.value} us`; });
+    elements.speed.addEventListener("input", () => { elements.speedValue.textContent = `${elements.speed.value} µs`; });
     elements.continuousCenter.addEventListener("input", () => {
-      elements.continuousCenterValue.textContent = `${elements.continuousCenter.value} us`;
+      elements.continuousCenterValue.textContent = `${elements.continuousCenter.value} µs`;
       if (state.selectedId) state.continuousCenters[state.selectedId] = Number(elements.continuousCenter.value);
     });
     elements.reverse.addEventListener("pointerdown", (event) => { event.preventDefault(); startContinuous(-1); });

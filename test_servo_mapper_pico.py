@@ -101,30 +101,30 @@ class PCA9685Tests(unittest.TestCase):
             (0x40, mapper.LED0_ON_L + 4 * 3, bytes((0x00, 0x00, 0x48, 0x01))),
         )
 
-    def test_set_pulse_rejects_out_of_range_value(self):
+    def test_set_pulse_rejects_value_outside_pwm_frame(self):
         mapper.boards = [self.pca, None]
 
-        with self.assertRaisesRegex(ValueError, "safe control range"):
+        with self.assertRaisesRegex(ValueError, "PCA9685 frame range"):
             mapper.handle({
                 "cmd": "set_pulse",
                 "board": 0,
                 "channel": 3,
-                "pulse_us": 2600,
+                "pulse_us": mapper.MAX_HARDWARE_PULSE_US + 1,
             })
 
-    def test_set_pulse_accepts_expanded_position_range(self):
+    def test_set_pulse_accepts_nonstandard_calibration_value(self):
         mapper.boards = [self.pca, None]
 
         mapper.handle({
             "cmd": "set_pulse",
             "board": 0,
             "channel": 1,
-            "pulse_us": 2500,
+            "pulse_us": 4000,
         })
 
         self.assertEqual(
             self.i2c.writes[-1],
-            (0x40, mapper.LED0_ON_L + 4, bytes((0x00, 0x00, 0x00, 0x02))),
+            (0x40, mapper.LED0_ON_L + 4, bytes((0x00, 0x00, 0x33, 0x03))),
         )
 
     def test_probe_rejects_wiggle_past_pulse_boundary(self):

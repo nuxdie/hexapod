@@ -38,9 +38,11 @@ PCA_ADDRESSES = (0x40, 0x41)
 PWM_FREQUENCY_HZ = 50
 PWM_PERIOD_US = 1_000_000 // PWM_FREQUENCY_HZ
 
-# Protocol limits. Mechanical safe limits still need calibration per joint.
-MIN_PULSE_US = 500
-MAX_PULSE_US = 2500
+# Probe limits stay conservative; direct pulse control uses the complete
+# PCA9685 range available inside one 50 Hz frame.
+MIN_PROBE_PULSE_US = 500
+MAX_PROBE_PULSE_US = 2500
+MAX_HARDWARE_PULSE_US = PWM_PERIOD_US * 4095 // 4096
 MIN_DELTA_US = 5
 MAX_DELTA_US = 60
 MIN_HOLD_MS = 60
@@ -79,6 +81,8 @@ class PCA9685:
     def set_pulse_us(self, channel, pulse_us):
         self._validate_channel(channel)
         off_tick = round(pulse_us * 4096 / PWM_PERIOD_US)
+        if not 0 <= off_tick <= 4095:
+            raise ValueError("pulse does not fit in one PCA9685 PWM frame")
         register = LED0_ON_L + 4 * channel
         self.i2c.writeto_mem(
             self.address,
@@ -150,13 +154,13 @@ def probe(command):
 
     if not 0 <= channel <= 15:
         raise ValueError("channel must be between 0 and 15")
-    if not MIN_PULSE_US <= center_us <= MAX_PULSE_US:
+    if not MIN_PROBE_PULSE_US <= center_us <= MAX_PROBE_PULSE_US:
         raise ValueError("center_us is outside the safe mapper range")
     if not MIN_DELTA_US <= delta_us <= MAX_DELTA_US:
         raise ValueError("delta_us is outside the safe mapper range")
-    if center_us - delta_us < MIN_PULSE_US:
+    if center_us - delta_us < MIN_PROBE_PULSE_US:
         raise ValueError("probe pulse is below the control range")
-    if center_us + delta_us > MAX_PULSE_US:
+    if center_us + delta_us > MAX_PROBE_PULSE_US:
         raise ValueError("probe pulse is above the control range")
     if not 1 <= cycles <= MAX_CYCLES:
         raise ValueError("cycles is outside the safe mapper range")
@@ -196,7 +200,7 @@ def handle(command):
         return {
             "ok": True,
             "event": "ready",
-            "version": 4,
+            "version": 5,
             "addresses": [hex(address) for address in detected_addresses],
             "available_addresses": [
                 hex(PCA_ADDRESSES[index])
@@ -213,8 +217,8 @@ def handle(command):
         board_index, board = board_for(command)
         channel = integer(command, "channel")
         pulse_us = integer(command, "pulse_us")
-        if not MIN_PULSE_US <= pulse_us <= MAX_PULSE_US:
-            raise ValueError("pulse_us is outside the safe control range")
+        if not 0 <= pulse_us <= MAX_HARDWARE_PULSE_US:
+            raise ValueError("pulse_us is outside the PCA9685 frame range")
         board.set_pulse_us(channel, pulse_us)
         return {
             "ok": True,
@@ -270,7 +274,7 @@ def main():
     initialize_hardware()
     send({
         "event": "ready",
-        "version": 4,
+        "version": 5,
         "addresses": [hex(address) for address in detected_addresses],
         "available_addresses": [
             hex(PCA_ADDRESSES[index])

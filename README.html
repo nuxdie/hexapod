@@ -804,7 +804,7 @@
           </div>
           <div class="note">
             <strong>Bring-up rule</strong>
-            <p>Test one unmounted servo first. Establish conservative pulse limits before installing horns, then center each joint mechanically. A nominal <code>500-2400 us</code> range may drive some SG90 clones into their hard stops.</p>
+            <p>Test one unmounted servo first. Establish conservative pulse limits before installing horns, then center each joint mechanically. A nominal <code>500-2400 µs</code> range may drive some SG90 clones into their hard stops.</p>
           </div>
         </section>
 
@@ -926,11 +926,11 @@
           </div>
           <div class="note">
             <strong>Servo calibration</strong>
-            <p>Open <a href="servo_calibrator.html"><code>http://localhost:8000/servo_calibrator.html</code></a> to find and capture each joint's safe minimum, neutral center, and maximum pulse. Calibration drafts persist in the browser; saving produces version 3 of <code>servo-map.json</code> with per-joint limits that manual control enforces automatically.</p>
+            <p>Open <a href="servo_calibrator.html"><code>http://localhost:8000/servo_calibrator.html</code></a> to find and capture each joint's safe minimum, neutral center, and maximum pulse. Raw entry has no hobby-servo range guard, and the slider window is adjustable; only the physical <code>0-19,995 µs</code> PCA9685 frame applies. Saving produces version 3 of <code>servo-map.json</code> with per-joint limits that manual control enforces automatically.</p>
           </div>
           <div class="note">
             <strong>Manual servo control</strong>
-            <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control mapped joints. Position mode supports live slider movement over <code>500-2500 us</code>; commands are coalesced to avoid a serial backlog. Center all moves the 18 joints sequentially to reduce the current step, while Relax all disables every PWM output.</p>
+            <p>Open <a href="servo_control.html"><code>http://localhost:8000/servo_control.html</code></a> to load <code>servo-map.json</code> and control mapped joints. Position mode follows each confirmed calibration envelope; commands are coalesced to avoid a serial backlog. Center all moves the 18 joints sequentially to reduce the current step, while Relax all disables every PWM output.</p>
           </div>
           <div class="note warning">
             <strong>Current code status</strong>
