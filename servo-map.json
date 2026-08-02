@@ -1,0 +1,133 @@
+{
+  "format": "hex01-servo-map",
+  "version": 1,
+  "generated_at": "2026-08-02T18:35:10.041Z",
+  "assignments": {
+    "lf.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 0,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lf.knee": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 7,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lf.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 4,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lm.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 2,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lm.knee": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 4,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lm.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 6,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lr.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 1,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lr.knee": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 8,
+      "center_us": 1500,
+      "invert": false
+    },
+    "lr.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 3,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rf.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 6,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rf.knee": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 5,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rf.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 0,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rm.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 8,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rm.knee": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 5,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rm.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 2,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rr.hip": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 7,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rr.knee": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 3,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rr.heel": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 1,
+      "center_us": 1500,
+      "invert": false
+    }
+  }
+}

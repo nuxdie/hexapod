@@ -274,6 +274,12 @@
 
     .channel:hover { border-color: var(--warn); }
 
+    .channel:disabled {
+      cursor: not-allowed;
+      opacity: 0.25;
+      border-style: dashed;
+    }
+
     .channel.selected {
       color: #fff8e9;
       background: var(--signal-dark);
@@ -754,8 +760,8 @@
             <input id="centerPulse" type="range" min="900" max="2100" step="5" value="1500">
           </div>
           <div class="field">
-            <label for="wigglePulse">Wiggle each way <output id="wiggleValue">20 us</output></label>
-            <input id="wigglePulse" type="range" min="5" max="60" step="5" value="20">
+            <label for="wigglePulse">Wiggle each way <output id="wiggleValue">40 us</output></label>
+            <input id="wigglePulse" type="range" min="5" max="60" step="5" value="40">
           </div>
 
           <div class="action-grid">
@@ -811,7 +817,11 @@
       writer: null,
       reading: false,
       connected: false,
+      connecting: false,
       busy: false,
+      addresses: new Set(),
+      pending: new Map(),
+      nextCommandId: 1,
       selected: null,
       mapping: loadMapping()
     };
@@ -895,9 +905,11 @@
     function renderBoards() {
       elements.boards.replaceChildren();
       for (let board = 0; board < 2; board += 1) {
+        const address = 0x40 + board;
+        const available = !state.connected || state.addresses.has(address);
         const wrapper = document.createElement("section");
         wrapper.className = "board";
-        wrapper.innerHTML = `<div class="board-title"><span>Board ${board + 1}</span><span>0x${(0x40 + board).toString(16)}</span></div>`;
+        wrapper.innerHTML = `<div class="board-title"><span>Board ${board + 1}</span><span>0x${address.toString(16)}${state.connected && !available ? " / NOT FOUND" : ""}</span></div>`;
         const channels = document.createElement("div");
         channels.className = "channels";
 
@@ -909,6 +921,7 @@
           button.className = `channel${selected ? " selected" : ""}${assignment ? " assigned" : ""}`;
           button.dataset.board = board;
           button.dataset.channel = channel;
+          button.disabled = state.connected && !available;
           button.title = assignment ? jointLabel(assignment[0]) : `Board ${board + 1}, channel ${channel}`;
           button.innerHTML = `<span class="channel-id">CH ${String(channel).padStart(2, "0")}</span><span class="channel-map">${assignment ? assignment[0].toUpperCase() : "UNMAPPED"}</span>`;
           button.addEventListener("click", () => selectPhysical(board, channel));
@@ -954,9 +967,14 @@
       elements.probe.disabled = !canMove;
       elements.relax.disabled = !(state.connected && !state.busy && state.selected);
       elements.emergency.disabled = !(state.connected && !state.busy);
-      elements.connect.disabled = state.busy;
-      elements.connect.textContent = state.connected ? "Disconnect" : "Connect Pico";
-      elements.connection.textContent = state.connected ? (state.busy ? "Command active" : "Pico connected") : "Disconnected";
+      elements.connect.disabled = state.busy || state.connecting;
+      elements.connect.textContent = state.connecting ? "Waiting for Pico" : (state.connected ? "Disconnect" : "Connect Pico");
+      const addressLabel = [...state.addresses].map((address) => `0x${address.toString(16)}`).join(" + ");
+      elements.connection.textContent = state.connecting
+        ? "Connecting"
+        : state.connected
+          ? (state.busy ? "Command active" : `Ready ${addressLabel || "/ no PCA"}`)
+          : "Disconnected";
       elements.connection.classList.toggle("online", state.connected);
     }
 
@@ -1017,16 +1035,31 @@
       }
 
       try {
+        state.connecting = true;
+        updateControls();
         state.port = await navigator.serial.requestPort();
         await state.port.open({ baudRate: 115200 });
         state.writer = state.port.writable.getWriter();
-        state.connected = true;
         state.reading = true;
-        updateControls();
         addLog("Serial port opened at 115200 baud.", "ok");
         readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
         await delay(150);
-        await sendCommand({ cmd: "hello" });
+        const hello = await sendCommand({ cmd: "hello" }, 2500);
+        state.addresses = new Set((hello.available_addresses || hello.addresses || []).map((address) => Number(address)));
+        state.connected = true;
+        state.connecting = false;
+        render();
+
+        const expected = [0x40, 0x41].filter((address) => state.addresses.has(address));
+        if (!expected.length) {
+          toast("Pico replied, but no PCA9685 was found. Check SDA, SCL, VCC, and GND.");
+          addLog("No PCA9685 detected at 0x40 or 0x41.", "error");
+        } else {
+          toast(`Pico ready. Detected ${expected.map((address) => `0x${address.toString(16)}`).join(" and ")}.`);
+        }
+        if (hello.board_errors && Object.keys(hello.board_errors).length) {
+          addLog(`PCA initialization errors: ${JSON.stringify(hello.board_errors)}`, "error");
+        }
       } catch (error) {
         addLog(`Connection failed: ${error.message}`, "error");
         toast(`Could not connect: ${error.message}`);
@@ -1046,7 +1079,14 @@
 
     async function closePort() {
       state.connected = false;
+      state.connecting = false;
       state.reading = false;
+      state.addresses = new Set();
+      for (const pending of state.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("Serial port closed"));
+      }
+      state.pending.clear();
       if (state.reader) {
         try { await state.reader.cancel(); } catch (error) { /* already closed */ }
       }
@@ -1086,19 +1126,46 @@
       if (!line) return;
       try {
         const message = JSON.parse(line);
+        const pending = message.id !== undefined ? state.pending.get(message.id) : null;
+        if (pending) {
+          clearTimeout(pending.timer);
+          state.pending.delete(message.id);
+          if (message.ok === false) pending.reject(new Error(message.error || "Pico command failed"));
+          else pending.resolve(message);
+        }
         if (message.ok === false) addLog(`Pico: ${message.error || "command failed"}`, "error");
-        else if (message.event === "ready") addLog(`Pico mapper firmware v${message.version} ready.`, "ok");
-        else addLog(`Pico: ${line}`, "ok");
+        else if (message.event === "ready") {
+          const addresses = (message.available_addresses || message.addresses || []).join(", ") || "none";
+          addLog(`Pico mapper firmware v${message.version} ready; I2C: ${addresses}.`, "ok");
+        } else addLog(`Pico: ${line}`, "ok");
       } catch (error) {
         addLog(`Pico text: ${line}`);
       }
     }
 
-    async function sendCommand(command) {
+    async function sendCommand(command, timeoutMs = 2000) {
       if (!state.writer) throw new Error("Pico is not connected");
-      const payload = new TextEncoder().encode(`${JSON.stringify(command)}\n`);
-      await state.writer.write(payload);
-      addLog(`TX ${JSON.stringify(command)}`);
+      const id = state.nextCommandId++;
+      const request = { ...command, id };
+      const response = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          state.pending.delete(id);
+          reject(new Error(`Pico did not acknowledge '${command.cmd}' within ${timeoutMs} ms`));
+        }, timeoutMs);
+        state.pending.set(id, { resolve, reject, timer });
+      });
+
+      try {
+        const payload = new TextEncoder().encode(`${JSON.stringify(request)}\n`);
+        await state.writer.write(payload);
+        addLog(`TX ${JSON.stringify(request)}`);
+      } catch (error) {
+        const pending = state.pending.get(id);
+        if (pending) clearTimeout(pending.timer);
+        state.pending.delete(id);
+        throw error;
+      }
+      return response;
     }
 
     async function probeSelected() {
@@ -1111,17 +1178,18 @@
       state.busy = true;
       updateControls();
       try {
+        const selected = { ...state.selected };
         await sendCommand({
           cmd: "probe",
-          board: state.selected.board,
-          channel: state.selected.channel,
+          board: selected.board,
+          channel: selected.channel,
           center_us: Number(elements.center.value),
           delta_us: Number(elements.wiggle.value),
-          cycles: 2,
-          hold_ms: 140,
+          cycles: 3,
+          hold_ms: 180,
           relax_after: true
-        });
-        await delay(1150);
+        }, 3500);
+        toast(`Board ${selected.board + 1}, channel ${selected.channel} responded and was relaxed.`);
       } catch (error) {
         addLog(`Probe failed: ${error.message}`, "error");
         toast(`Probe failed: ${error.message}`);
@@ -1133,7 +1201,12 @@
 
     async function relaxSelected() {
       if (!state.selected || !state.connected) return;
-      await sendCommand({ cmd: "relax", board: state.selected.board, channel: state.selected.channel });
+      try {
+        await sendCommand({ cmd: "relax", board: state.selected.board, channel: state.selected.channel });
+        toast("Selected output relaxed.");
+      } catch (error) {
+        toast(`Relax command failed: ${error.message}`);
+      }
     }
 
     async function relaxAll() {

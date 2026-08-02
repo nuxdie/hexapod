@@ -46,6 +46,11 @@ MIN_HOLD_MS = 60
 MAX_HOLD_MS = 400
 MAX_CYCLES = 4
 
+i2c = None
+detected_addresses = []
+boards = [None, None]
+board_errors = {}
+
 
 class PCA9685:
     def __init__(self, i2c, address):
@@ -184,9 +189,16 @@ def handle(command):
 
     if name == "hello":
         return {
+            "ok": True,
             "event": "ready",
-            "version": 1,
+            "version": 2,
             "addresses": [hex(address) for address in detected_addresses],
+            "available_addresses": [
+                hex(PCA_ADDRESSES[index])
+                for index, board in enumerate(boards)
+                if board is not None
+            ],
+            "board_errors": board_errors,
         }
 
     if name == "probe":
@@ -217,42 +229,69 @@ def handle(command):
     raise ValueError("unknown command")
 
 
-i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400_000)
-detected_addresses = i2c.scan()
-boards = []
+def initialize_hardware():
+    global i2c, detected_addresses, boards, board_errors
 
-for address in PCA_ADDRESSES:
-    if address in detected_addresses:
-        boards.append(PCA9685(i2c, address))
-    else:
-        boards.append(None)
+    i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400_000)
+    detected_addresses = i2c.scan()
+    boards = [None, None]
+    board_errors = {}
 
-send({
-    "event": "ready",
-    "version": 1,
-    "addresses": [hex(address) for address in detected_addresses],
-})
-
-poll = select.poll()
-poll.register(sys.stdin, select.POLLIN)
-
-try:
-    while True:
-        if not poll.poll(100):
+    for index, address in enumerate(PCA_ADDRESSES):
+        if address not in detected_addresses:
             continue
-
-        line = sys.stdin.readline()
-        if not line:
-            time.sleep_ms(10)
-            continue
-
         try:
-            command = json.loads(line)
-            if not isinstance(command, dict):
-                raise ValueError("command must be a JSON object")
-            send(handle(command))
+            boards[index] = PCA9685(i2c, address)
         except Exception as error:
-            send({"ok": False, "error": str(error)})
-except KeyboardInterrupt:
-    relax_all()
-    send({"event": "stopped", "relaxed": True})
+            board_errors[str(index)] = str(error)
+
+
+def main():
+    initialize_hardware()
+    send({
+        "event": "ready",
+        "version": 2,
+        "addresses": [hex(address) for address in detected_addresses],
+        "available_addresses": [
+            hex(PCA_ADDRESSES[index])
+            for index, board in enumerate(boards)
+            if board is not None
+        ],
+        "board_errors": board_errors,
+    })
+
+    poll = select.poll()
+    poll.register(sys.stdin, select.POLLIN)
+
+    try:
+        while True:
+            if not poll.poll(100):
+                continue
+
+            line = sys.stdin.readline()
+            if not line:
+                time.sleep_ms(10)
+                continue
+
+            request_id = None
+            try:
+                command = json.loads(line)
+                if not isinstance(command, dict):
+                    raise ValueError("command must be a JSON object")
+                request_id = command.get("id")
+                response = handle(command)
+                if request_id is not None:
+                    response["id"] = request_id
+                send(response)
+            except Exception as error:
+                response = {"ok": False, "error": str(error)}
+                if request_id is not None:
+                    response["id"] = request_id
+                send(response)
+    except KeyboardInterrupt:
+        relax_all()
+        send({"event": "stopped", "relaxed": True})
+
+
+if __name__ == "__main__":
+    main()
