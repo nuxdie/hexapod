@@ -1,7 +1,7 @@
 {
   "format": "hex01-servo-map",
   "version": 3,
-  "generated_at": "2026-08-02T23:02:52.908Z",
+  "generated_at": "2026-08-02T23:19:09.046Z",
   "assignments": {
     "lf.coxa": {
       "board": 1,
@@ -37,7 +37,7 @@
       "min_us": 500,
       "max_us": 2500,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -76,7 +76,7 @@
       "min_us": 500,
       "max_us": 2500,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -115,7 +115,7 @@
       "min_us": 500,
       "max_us": 2500,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -128,7 +128,7 @@
       "min_us": 403,
       "max_us": 2548,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -141,7 +141,7 @@
       "min_us": 320,
       "max_us": 2668,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -167,7 +167,7 @@
       "min_us": 1041,
       "max_us": 2594,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -180,7 +180,7 @@
       "min_us": 338,
       "max_us": 2649,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -206,7 +206,7 @@
       "min_us": 505,
       "max_us": 2548,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
@@ -219,7 +219,7 @@
       "min_us": 366,
       "max_us": 2622,
       "travel_degrees": 180,
-      "invert": false,
+      "invert": true,
       "calibrated": true,
       "min_captured": true,
       "max_captured": true
