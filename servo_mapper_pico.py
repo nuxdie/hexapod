@@ -1,9 +1,8 @@
 """
 HEX-01 servo mapper bridge for Raspberry Pi Pico / MicroPython.
 
-Run this on the Pico as main.py, then open servo_mapper.html or
-servo_control.html in a Web Serial capable browser. The browser sends one JSON
-command per line over USB serial.
+Run this on the Pico as main.py, then open one of the browser control tools.
+The browser sends one JSON command per line over USB serial.
 
 Pico wiring:
     GP0  -> SDA on both PCA9685 boards
@@ -37,6 +36,8 @@ LED0_ON_L = 0x06
 PCA_ADDRESSES = (0x40, 0x41)
 PWM_FREQUENCY_HZ = 50
 PWM_PERIOD_US = 1_000_000 // PWM_FREQUENCY_HZ
+FIRMWARE_VERSION = 6
+MAX_BATCH_PULSES = 18
 
 # Probe limits stay conservative; direct pulse control uses the complete
 # PCA9685 range available inside one 50 Hz frame.
@@ -193,6 +194,36 @@ def probe(command):
     }
 
 
+def set_pulses(command):
+    pulses = command.get("pulses")
+    if not isinstance(pulses, list) or not 1 <= len(pulses) <= MAX_BATCH_PULSES:
+        raise ValueError("pulses must contain between 1 and 18 outputs")
+
+    prepared = []
+    seen = set()
+    for item in pulses:
+        if not isinstance(item, dict):
+            raise ValueError("each pulse must be a JSON object")
+        board_index, board = board_for(item)
+        channel = integer(item, "channel")
+        pulse_us = integer(item, "pulse_us")
+        if not 0 <= channel <= 15:
+            raise ValueError("channel must be between 0 and 15")
+        if not 0 <= pulse_us <= MAX_HARDWARE_PULSE_US:
+            raise ValueError("pulse_us is outside the PCA9685 frame range")
+        output = (board_index, channel)
+        if output in seen:
+            raise ValueError("batch contains a duplicate output")
+        seen.add(output)
+        prepared.append((board, channel, pulse_us))
+
+    # Validate the entire frame before changing any physical output.
+    for board, channel, pulse_us in prepared:
+        board.set_pulse_us(channel, pulse_us)
+
+    return {"ok": True, "cmd": "set_pulses", "count": len(prepared)}
+
+
 def handle(command):
     name = command.get("cmd")
 
@@ -200,7 +231,7 @@ def handle(command):
         return {
             "ok": True,
             "event": "ready",
-            "version": 5,
+            "version": FIRMWARE_VERSION,
             "addresses": [hex(address) for address in detected_addresses],
             "available_addresses": [
                 hex(PCA_ADDRESSES[index])
@@ -227,6 +258,9 @@ def handle(command):
             "channel": channel,
             "pulse_us": pulse_us,
         }
+
+    if name == "set_pulses":
+        return set_pulses(command)
 
     if name == "relax":
         board_index, board = board_for(command)
@@ -274,7 +308,7 @@ def main():
     initialize_hardware()
     send({
         "event": "ready",
-        "version": 5,
+        "version": FIRMWARE_VERSION,
         "addresses": [hex(address) for address in detected_addresses],
         "available_addresses": [
             hex(PCA_ADDRESSES[index])

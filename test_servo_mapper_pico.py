@@ -127,6 +127,38 @@ class PCA9685Tests(unittest.TestCase):
             (0x40, mapper.LED0_ON_L + 4, bytes((0x00, 0x00, 0x33, 0x03))),
         )
 
+    def test_set_pulses_command_updates_complete_frame(self):
+        mapper.boards = [self.pca, None]
+
+        response = mapper.handle({
+            "cmd": "set_pulses",
+            "pulses": [
+                {"board": 0, "channel": 1, "pulse_us": 1400},
+                {"board": 0, "channel": 4, "pulse_us": 1600},
+                {"board": 0, "channel": 7, "pulse_us": 1800},
+            ],
+        })
+
+        self.assertEqual(response["count"], 3)
+        self.assertEqual(
+            [register for _, register, _ in self.i2c.writes],
+            [mapper.LED0_ON_L + 4, mapper.LED0_ON_L + 16, mapper.LED0_ON_L + 28],
+        )
+
+    def test_set_pulses_validates_complete_frame_before_writing(self):
+        mapper.boards = [self.pca, None]
+
+        with self.assertRaisesRegex(ValueError, "PCA9685 frame range"):
+            mapper.handle({
+                "cmd": "set_pulses",
+                "pulses": [
+                    {"board": 0, "channel": 1, "pulse_us": 1400},
+                    {"board": 0, "channel": 4, "pulse_us": mapper.MAX_HARDWARE_PULSE_US + 1},
+                ],
+            })
+
+        self.assertEqual(self.i2c.writes, [])
+
     def test_probe_rejects_wiggle_past_pulse_boundary(self):
         mapper.boards = [self.pca, None]
 

@@ -518,7 +518,7 @@
         <div class="mark">H/01</div>
         <div>
           <h1>Single-leg IK bench</h1>
-          <div class="subtitle">Cartesian target preview / firmware v5</div>
+          <div class="subtitle">Cartesian target preview / firmware v6</div>
           <div class="tool-menu" aria-label="Project tools">
             <a href="README.html">Build dossier</a>
             <a href="servo_mapper.html">Servo mapper</a>
@@ -631,11 +631,11 @@
 
         <div class="section-head">
           <h2>Motion</h2>
-          <span>Explicit commands only</span>
+          <span>Synchronized eased frames</span>
         </div>
         <div class="geometry-grid">
-          <label>Step mm<input id="stepSize" type="number" min="0.5" max="10" step="0.5" value="2"></label>
-          <label>Frame ms<input id="frameDelay" type="number" min="20" max="500" step="10" value="70"></label>
+          <label>Speed mm/s<input id="motionSpeed" type="number" min="5" max="100" step="5" value="35"></label>
+          <label>Frame ms<input id="frameDelay" type="number" min="20" max="100" step="5" value="20"></label>
           <label>Path<input id="pathLength" type="text" value="0" disabled></label>
         </div>
 
@@ -720,7 +720,7 @@
       coxaCenterAngle: document.querySelector("#coxaCenterAngle"),
       femurCenterAngle: document.querySelector("#femurCenterAngle"),
       tibiaCenterAngle: document.querySelector("#tibiaCenterAngle"),
-      stepSize: document.querySelector("#stepSize"),
+      motionSpeed: document.querySelector("#motionSpeed"),
       frameDelay: document.querySelector("#frameDelay"),
       pathLength: document.querySelector("#pathLength"),
       coxaAngle: document.querySelector("#coxaAngle"),
@@ -936,11 +936,16 @@
 
     function buildPath(from, to) {
       const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
-      const step = clamp(Number(elements.stepSize.value) || 2, 0.5, 10);
-      const count = Math.max(1, Math.ceil(distance / step));
+      const speed = clamp(Number(elements.motionSpeed.value) || 35, 5, 100);
+      const frameMs = clamp(Number(elements.frameDelay.value) || 20, 20, 100);
+      const requestedDuration = distance / speed * 1000;
+      const count = Math.max(1, Math.ceil(requestedDuration / frameMs));
+      const durationMs = count * frameMs;
       const frames = [];
       for (let index = 1; index <= count; index += 1) {
-        const fraction = index / count;
+        const timeFraction = index / count;
+        const fraction = timeFraction * timeFraction * timeFraction
+          * (timeFraction * (timeFraction * 6 - 15) + 10);
         const point = {
           x: from.x + (to.x - from.x) * fraction,
           y: from.y + (to.y - from.y) * fraction,
@@ -948,9 +953,9 @@
         };
         const solution = solveIK(point);
         if (!solution.valid) return { valid: false, reason: `Path blocked at ${Math.round(fraction * 100)}%: ${solution.reason}` };
-        frames.push({ point, solution });
+        frames.push({ point, solution, dueMs: index * frameMs });
       }
-      return { valid: true, frames, distance };
+      return { valid: true, frames, distance, durationMs };
     }
 
     function setSvgLine(element, x1, y1, x2, y2) {
@@ -1162,7 +1167,9 @@
 
       let path = null;
       if (state.activeLeg === state.selectedLeg && state.currentTarget) path = buildPath(state.currentTarget, target());
-      elements.pathLength.value = path?.valid ? `${path.distance.toFixed(1)} mm / ${path.frames.length}` : "--";
+      elements.pathLength.value = path?.valid
+        ? `${path.distance.toFixed(1)} mm / ${(path.durationMs / 1000).toFixed(2)} s`
+        : "--";
 
       const ready = state.connected && elements.safety.checked && selectedServos() && !state.busy;
       elements.connect.disabled = state.connecting || state.busy;
@@ -1188,7 +1195,7 @@
       ]) {
         input.disabled = state.busy || state.activeLeg !== null;
       }
-      elements.stepSize.disabled = state.busy;
+      elements.motionSpeed.disabled = state.busy;
       elements.frameDelay.disabled = state.busy;
       elements.sideSvg.setAttribute("aria-disabled", String(state.busy));
       elements.topSvg.setAttribute("aria-disabled", String(state.busy));
@@ -1225,7 +1232,7 @@
         readSerial().catch((error) => addLog(`Read error: ${error.message}`, "error"));
         await delay(150);
         const hello = await sendCommand({ cmd: "hello" }, 2500);
-        if (Number(hello.version) < 5) throw new Error(`firmware v${hello.version} is too old; v5 is required`);
+        if (Number(hello.version) < 6) throw new Error(`firmware v${hello.version} is too old; v6 is required`);
         const available = new Set((hello.available_addresses || []).map(Number));
         if (!available.has(0x40) || !available.has(0x41)) throw new Error("both PCA9685 boards must be initialized");
         await sendCommand({ cmd: "relax_all" });
@@ -1348,16 +1355,18 @@
 
     async function commandSolution(solution) {
       const servos = selectedServos();
-      for (const joint of JOINTS) {
-        if (state.motionCancel) throw new Error("motion cancelled");
-        const servo = servos[joint];
-        await enqueue({
-          cmd: "set_pulse",
-          board: servo.board,
-          channel: servo.channel,
-          pulse_us: solution.pulses[joint].rounded
-        });
-      }
+      if (state.motionCancel) throw new Error("motion cancelled");
+      await enqueue({
+        cmd: "set_pulses",
+        pulses: JOINTS.map((joint) => {
+          const servo = servos[joint];
+          return {
+            board: servo.board,
+            channel: servo.channel,
+            pulse_us: solution.pulses[joint].rounded
+          };
+        })
+      });
     }
 
     async function engageNeutral() {
@@ -1402,14 +1411,15 @@
       state.busy = true;
       state.motionCancel = false;
       render();
-      const frameDelay = clamp(Number(elements.frameDelay.value) || 70, 20, 500);
+      const startedAt = performance.now();
       try {
         for (const frame of path.frames) {
+          const waitMs = startedAt + frame.dueMs - performance.now();
+          if (waitMs > 0) await delay(waitMs);
           await commandSolution(frame.solution);
           state.currentTarget = frame.point;
-          await delay(frameDelay);
         }
-        addLog(`${state.selectedLeg.toUpperCase()} -> ${formatPoint(destination)} in ${path.frames.length} frames.`, "ok");
+        addLog(`${state.selectedLeg.toUpperCase()} -> ${formatPoint(destination)} in ${path.frames.length} synchronized frames.`, "ok");
       } catch (error) {
         await enqueue({ cmd: "relax_all" }).catch(() => {});
         state.activeLeg = null;
@@ -1525,7 +1535,7 @@
     ]) {
       input.addEventListener("input", () => { saveGeometry(); render(); });
     }
-    elements.stepSize.addEventListener("input", render);
+    elements.motionSpeed.addEventListener("input", render);
     elements.frameDelay.addEventListener("input", render);
     elements.connect.addEventListener("click", connectSerial);
     elements.relaxAll.addEventListener("click", relaxAll);
