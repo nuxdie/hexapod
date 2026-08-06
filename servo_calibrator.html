@@ -190,7 +190,7 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: 290px minmax(520px, 1fr) 310px;
+      grid-template-columns: 400px minmax(520px, 1fr) 310px;
       min-height: calc(100vh - 142px);
     }
 
@@ -258,38 +258,74 @@
 
     .progress-track span { display: block; width: 0; height: 100%; background: var(--green); }
 
-    .leg-group { margin-bottom: 17px; }
+    .robot-wrap {
+      display: grid;
+      min-height: 480px;
+      place-items: center;
+      background:
+        linear-gradient(rgba(235, 230, 217, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(235, 230, 217, 0.06) 1px, transparent 1px),
+        #26302c;
+      background-size: 24px 24px;
+      border: 1px solid #56615b;
+    }
 
-    .leg-title {
-      margin-bottom: 6px;
-      color: #aeb5b0;
-      font: 800 10px/1.2 "Courier New", monospace;
-      letter-spacing: 0.07em;
+    #jointRoster {
+      width: 100%;
+      height: auto;
+      max-height: 590px;
+      overflow: visible;
+    }
+
+    .robot-leg-line {
+      fill: none;
+      stroke: #77827c;
+      stroke-width: 12;
+      stroke-linecap: square;
+      stroke-linejoin: bevel;
+    }
+
+    .robot-body { fill: #303b36; stroke: #cad0cb; stroke-width: 4; }
+    .robot-body-inset { fill: none; stroke: var(--signal); stroke-width: 2; }
+
+    .robot-joint { cursor: pointer; outline: none; }
+
+    .robot-joint circle {
+      fill: #303b36;
+      stroke: #aeb8b2;
+      stroke-width: 4;
+      transition: fill 120ms ease, stroke 120ms ease;
+    }
+
+    .robot-joint:hover circle,
+    .robot-joint:focus-visible circle { fill: #6a552e; stroke: var(--amber); }
+    .robot-joint.calibrated:not(.selected) circle { fill: var(--green); stroke: #d5e6bd; }
+    .robot-joint.selected circle { fill: var(--signal-dark); stroke: #ff896d; stroke-width: 6; }
+    .robot-joint.unmapped { cursor: not-allowed; opacity: 0.25; }
+
+    .robot-joint text {
+      pointer-events: none;
+      fill: #eef0eb;
+      font: 900 13px/1 "Courier New", monospace;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    .robot-joint.calibrated:not(.selected) text { fill: var(--ink); }
+    .robot-label { fill: #e6b19f; font: 900 14px/1 "Courier New", monospace; letter-spacing: 0.08em; text-anchor: middle; }
+    .robot-orientation { fill: #bac2bd; font: 800 11px/1 "Courier New", monospace; letter-spacing: 0.08em; text-anchor: middle; }
+
+    .robot-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px 14px;
+      margin-top: 12px;
+      color: #bbc2bd;
+      font: 9px/1.4 "Courier New", monospace;
       text-transform: uppercase;
     }
 
-    .joint-list { display: grid; gap: 4px; }
-
-    .joint-button {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-      min-height: 37px;
-      padding: 7px 9px;
-      color: #e2e4df;
-      background: #303b36;
-      border: 1px solid #56615b;
-      border-radius: 2px;
-      text-align: left;
-    }
-
-    .joint-button:hover { border-color: var(--amber); }
-    .joint-button.selected { color: #fff8e8; background: var(--signal-dark); border-color: #f17f61; }
-    .joint-button.calibrated:not(.selected) { color: var(--ink); background: var(--green); border-color: #d5e6bd; }
-
-    .joint-button strong { font: 800 11px/1.2 "Courier New", monospace; text-transform: uppercase; }
-    .joint-button small { font: 9px/1 "Courier New", monospace; }
+    .robot-legend b { color: #f1f2ed; }
 
     .selected-card {
       margin-bottom: 22px;
@@ -558,8 +594,8 @@
       main > .warning { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
     }
 
-    @media (max-width: 1120px) {
-      .workspace { grid-template-columns: 260px minmax(500px, 1fr); }
+    @media (max-width: 1280px) {
+      .workspace { grid-template-columns: 360px minmax(500px, 1fr); }
       .record { grid-column: 1 / -1; border-top: 1px solid var(--ink); border-left: 0; }
       .record { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
       .record .panel-head { grid-column: 1 / -1; margin-bottom: 0; }
@@ -573,7 +609,8 @@
       .safety { grid-template-columns: 1fr; gap: 6px; }
       .workspace { display: block; }
       .roster { border-right: 0; }
-      .joint-list { grid-template-columns: repeat(3, 1fr); }
+      .robot-wrap { min-height: 360px; }
+      #jointRoster { max-height: 440px; }
       main { padding: 20px 14px 32px; }
       .procedure,
       .capture-grid { grid-template-columns: 1fr; }
@@ -629,7 +666,50 @@
           <strong id="progressText">0 / 18</strong>
           <div class="progress-track"><span id="progressBar"></span></div>
         </div>
-        <div id="jointRoster"></div>
+        <div class="robot-wrap">
+          <svg id="jointRoster" viewBox="0 0 700 600" role="img" aria-labelledby="calRobotTitle calRobotDesc">
+            <title id="calRobotTitle">Clickable top-view hexapod calibration schematic</title>
+            <desc id="calRobotDesc">Six legs with selectable coxa, femur, and tibia joints. Green joints are calibrated.</desc>
+            <defs>
+              <marker id="calArrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#eb5732"/>
+              </marker>
+            </defs>
+            <path class="robot-leg-line" d="M260 202 L165 143 L68 105"/>
+            <path class="robot-leg-line" d="M245 300 L148 300 L50 300"/>
+            <path class="robot-leg-line" d="M260 398 L165 457 L68 495"/>
+            <path class="robot-leg-line" d="M440 202 L535 143 L632 105"/>
+            <path class="robot-leg-line" d="M455 300 L552 300 L650 300"/>
+            <path class="robot-leg-line" d="M440 398 L535 457 L632 495"/>
+            <path class="robot-body" d="M260 168 L440 168 L485 240 L485 360 L440 432 L260 432 L215 360 L215 240 Z"/>
+            <path class="robot-body-inset" d="M278 193 L422 193 L457 248 L457 352 L422 407 L278 407 L243 352 L243 248 Z"/>
+            <text class="robot-orientation" x="350" y="280">CALIBRATION</text>
+            <text class="robot-orientation" x="350" y="298">TOP VIEW</text>
+            <line x1="350" y1="150" x2="350" y2="82" stroke="#eb5732" stroke-width="3" marker-end="url(#calArrow)"/>
+            <text class="robot-orientation" x="350" y="60">FRONT</text>
+            <text class="robot-label" x="91" y="74">LF</text><text class="robot-label" x="65" y="270">LM</text><text class="robot-label" x="91" y="535">LR</text>
+            <text class="robot-label" x="609" y="74">RF</text><text class="robot-label" x="635" y="270">RM</text><text class="robot-label" x="609" y="535">RR</text>
+            <g class="robot-joint" data-joint="lf.coxa" tabindex="0" role="button"><circle cx="260" cy="202" r="22"/><text x="260" y="202">C</text></g>
+            <g class="robot-joint" data-joint="lf.femur" tabindex="0" role="button"><circle cx="165" cy="143" r="22"/><text x="165" y="143">F</text></g>
+            <g class="robot-joint" data-joint="lf.tibia" tabindex="0" role="button"><circle cx="68" cy="105" r="22"/><text x="68" y="105">T</text></g>
+            <g class="robot-joint" data-joint="lm.coxa" tabindex="0" role="button"><circle cx="245" cy="300" r="22"/><text x="245" y="300">C</text></g>
+            <g class="robot-joint" data-joint="lm.femur" tabindex="0" role="button"><circle cx="148" cy="300" r="22"/><text x="148" y="300">F</text></g>
+            <g class="robot-joint" data-joint="lm.tibia" tabindex="0" role="button"><circle cx="50" cy="300" r="22"/><text x="50" y="300">T</text></g>
+            <g class="robot-joint" data-joint="lr.coxa" tabindex="0" role="button"><circle cx="260" cy="398" r="22"/><text x="260" y="398">C</text></g>
+            <g class="robot-joint" data-joint="lr.femur" tabindex="0" role="button"><circle cx="165" cy="457" r="22"/><text x="165" y="457">F</text></g>
+            <g class="robot-joint" data-joint="lr.tibia" tabindex="0" role="button"><circle cx="68" cy="495" r="22"/><text x="68" y="495">T</text></g>
+            <g class="robot-joint" data-joint="rf.coxa" tabindex="0" role="button"><circle cx="440" cy="202" r="22"/><text x="440" y="202">C</text></g>
+            <g class="robot-joint" data-joint="rf.femur" tabindex="0" role="button"><circle cx="535" cy="143" r="22"/><text x="535" y="143">F</text></g>
+            <g class="robot-joint" data-joint="rf.tibia" tabindex="0" role="button"><circle cx="632" cy="105" r="22"/><text x="632" y="105">T</text></g>
+            <g class="robot-joint" data-joint="rm.coxa" tabindex="0" role="button"><circle cx="455" cy="300" r="22"/><text x="455" y="300">C</text></g>
+            <g class="robot-joint" data-joint="rm.femur" tabindex="0" role="button"><circle cx="552" cy="300" r="22"/><text x="552" y="300">F</text></g>
+            <g class="robot-joint" data-joint="rm.tibia" tabindex="0" role="button"><circle cx="650" cy="300" r="22"/><text x="650" y="300">T</text></g>
+            <g class="robot-joint" data-joint="rr.coxa" tabindex="0" role="button"><circle cx="440" cy="398" r="22"/><text x="440" y="398">C</text></g>
+            <g class="robot-joint" data-joint="rr.femur" tabindex="0" role="button"><circle cx="535" cy="457" r="22"/><text x="535" y="457">F</text></g>
+            <g class="robot-joint" data-joint="rr.tibia" tabindex="0" role="button"><circle cx="632" cy="495" r="22"/><text x="632" y="495">T</text></g>
+          </svg>
+        </div>
+        <div class="robot-legend"><span><b>C</b> Coxa</span><span><b>F</b> Femur</span><span><b>T</b> Tibia</span><span>Green = calibrated</span></div>
       </aside>
 
       <main>
@@ -957,27 +1037,20 @@
     }
 
     function renderRoster() {
-      elements.roster.replaceChildren();
-      for (const leg of ["lf", "lm", "lr", "rf", "rm", "rr"]) {
-        const section = document.createElement("section");
-        section.className = "leg-group";
-        section.innerHTML = `<div class="leg-title">${LEG_NAMES[leg]} / ${leg.toUpperCase()}</div>`;
-        const list = document.createElement("div");
-        list.className = "joint-list";
-        for (const joint of ["coxa", "femur", "tibia"]) {
-          const id = `${leg}.${joint}`;
-          const servo = state.servos[id];
-          if (!servo) continue;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = `joint-button${id === state.selectedId ? " selected" : ""}${servo.calibrated ? " calibrated" : ""}`;
-          button.innerHTML = `<strong>${JOINT_NAMES[joint]}</strong><small>${servo.calibrated ? "CAL" : "PENDING"}</small>`;
-          button.addEventListener("click", () => selectJoint(id));
-          list.append(button);
-        }
-        section.append(list);
-        elements.roster.append(section);
-      }
+      elements.roster.querySelectorAll(".robot-joint").forEach((joint) => {
+        const id = joint.dataset.joint;
+        const servo = state.servos[id];
+        joint.classList.toggle("selected", id === state.selectedId);
+        joint.classList.toggle("calibrated", Boolean(servo?.calibrated));
+        joint.classList.toggle("unmapped", !servo);
+        joint.tabIndex = servo ? 0 : -1;
+        joint.setAttribute(
+          "aria-label",
+          servo
+            ? `${jointLabel(id)}, ${servo.calibrated ? "calibrated" : "pending"}${id === state.selectedId ? ", selected" : ""}`
+            : `${jointLabel(id)}, not mapped`
+        );
+      });
     }
 
     function calibrationValidity(servo) {
@@ -1371,6 +1444,15 @@
     }
 
     elements.connect.addEventListener("click", connectSerial);
+    elements.roster.querySelectorAll(".robot-joint").forEach((joint) => {
+      joint.addEventListener("click", () => state.servos[joint.dataset.joint] && selectJoint(joint.dataset.joint));
+      joint.addEventListener("keydown", (event) => {
+        if ((event.key === "Enter" || event.key === " ") && state.servos[joint.dataset.joint]) {
+          event.preventDefault();
+          selectJoint(joint.dataset.joint);
+        }
+      });
+    });
     elements.relax.addEventListener("click", relaxAll);
     elements.safety.addEventListener("change", () => {
       updateControls();

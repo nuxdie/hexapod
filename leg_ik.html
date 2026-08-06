@@ -233,25 +233,37 @@
 
     .leg-selector {
       display: grid;
-      grid-template-columns: repeat(6, minmax(80px, 1fr));
-      gap: 6px;
+      min-height: 290px;
+      place-items: center;
       margin-bottom: 18px;
-    }
-
-    .leg-button {
-      min-height: 48px;
-      padding: 7px;
-      color: var(--ink);
-      background: transparent;
+      background:
+        linear-gradient(rgba(21, 28, 25, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(21, 28, 25, 0.07) 1px, transparent 1px),
+        #e4dfd1;
+      background-size: 20px 20px;
       border: 1px solid var(--line);
-      font: 800 11px/1.2 "Courier New", monospace;
-      text-transform: uppercase;
     }
 
-    .leg-button:hover:not(:disabled) { border-color: var(--ink); }
-    .leg-button.selected { color: var(--paper); background: var(--ink); border-color: var(--ink); }
-    .leg-button.active { box-shadow: inset 0 -5px var(--green); }
-    .leg-button:disabled { cursor: not-allowed; opacity: 0.45; }
+    #legSelector { width: min(100%, 420px); height: auto; max-height: 330px; overflow: visible; }
+    .ik-body { fill: var(--dark-2); stroke: var(--ink); stroke-width: 4; }
+    .ik-body-inset { fill: none; stroke: var(--signal); stroke-width: 2; }
+    .ik-orientation { fill: var(--muted); font: 800 11px/1 "Courier New", monospace; letter-spacing: 0.08em; text-anchor: middle; }
+    .ik-leg { cursor: pointer; outline: none; }
+    .ik-leg-line { fill: none; stroke: #46504b; stroke-width: 12; stroke-linecap: square; stroke-linejoin: bevel; transition: stroke 120ms ease; }
+    .ik-leg circle { fill: var(--paper); stroke: var(--ink); stroke-width: 4; transition: fill 120ms ease, stroke 120ms ease; }
+    .ik-leg text { pointer-events: none; fill: var(--ink); font: 900 12px/1 "Courier New", monospace; text-anchor: middle; dominant-baseline: central; }
+    .ik-leg .ik-leg-label { fill: var(--signal-dark); font-size: 15px; letter-spacing: 0.08em; }
+    .ik-leg:hover circle,
+    .ik-leg:focus-visible circle { fill: var(--amber); stroke: var(--signal-dark); }
+    .ik-leg:hover .ik-leg-line,
+    .ik-leg:focus-visible .ik-leg-line { stroke: var(--signal-dark); }
+    .ik-leg.selected circle { fill: var(--signal-dark); stroke: var(--signal); stroke-width: 6; }
+    .ik-leg.selected text:not(.ik-leg-label) { fill: #fff8ea; }
+    .ik-leg.selected .ik-leg-line { stroke: var(--signal-dark); }
+    .ik-leg.active circle { stroke: #4f6d31; stroke-width: 8; }
+    .ik-leg.active .ik-leg-line { stroke: var(--green); }
+    .ik-leg[aria-disabled="true"] { cursor: not-allowed; }
+    .ik-leg.unavailable { opacity: 0.28; }
 
     .visual-grid {
       display: grid;
@@ -307,7 +319,7 @@
       border-color: rgba(120, 30, 20, 0.45);
     }
 
-    svg {
+    .diagram svg {
       display: block;
       width: 100%;
       aspect-ratio: 4 / 3;
@@ -322,7 +334,7 @@
       user-select: none;
     }
 
-    svg[aria-disabled="true"] { cursor: not-allowed; }
+    .diagram svg[aria-disabled="true"] { cursor: not-allowed; }
 
     .axis { stroke: #8d8b81; stroke-width: 1; stroke-dasharray: 4 4; }
     .workspace-blocked { fill: rgba(162, 47, 34, 0.16); pointer-events: none; }
@@ -501,7 +513,8 @@
       .connection { flex-wrap: wrap; padding: 12px 16px; }
       .safety { grid-template-columns: 1fr; padding: 11px 16px; }
       main, aside { padding: 18px 14px; }
-      .leg-selector { grid-template-columns: repeat(3, 1fr); }
+      .leg-selector { min-height: 300px; }
+      #legSelector { max-height: 320px; }
       .visual-grid { grid-template-columns: 1fr; }
       .diagram + .diagram { border-top: 1px solid var(--ink); border-left: 0; }
       .result-panel { grid-template-columns: 1fr; }
@@ -548,7 +561,40 @@
           <span>Local frame: x outward / y forward / z down</span>
         </div>
 
-        <div id="legSelector" class="leg-selector"></div>
+        <div class="leg-selector">
+          <svg id="legSelector" viewBox="0 0 700 600" role="img" aria-labelledby="ikRobotTitle ikRobotDesc">
+            <title id="ikRobotTitle">Selectable top-view hexapod leg schematic</title>
+            <desc id="ikRobotDesc">Choose one of six complete three-joint legs for inverse-kinematics control.</desc>
+            <defs>
+              <marker id="ikArrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#ed5733"/>
+              </marker>
+            </defs>
+            <path class="ik-body" d="M260 168 L440 168 L485 240 L485 360 L440 432 L260 432 L215 360 L215 240 Z"/>
+            <path class="ik-body-inset" d="M278 193 L422 193 L457 248 L457 352 L422 407 L278 407 L243 352 L243 248 Z"/>
+            <text class="ik-orientation" x="350" y="280">SELECT LEG</text><text class="ik-orientation" x="350" y="298">IK TOP VIEW</text>
+            <line x1="350" y1="150" x2="350" y2="82" stroke="#ed5733" stroke-width="3" marker-end="url(#ikArrow)"/>
+            <text class="ik-orientation" x="350" y="60">FRONT</text>
+            <g class="ik-leg" data-leg="lf" tabindex="0" role="button" aria-label="Left front leg">
+              <path class="ik-leg-line" d="M260 202 L165 143 L68 105"/><circle cx="260" cy="202" r="22"/><text x="260" y="202">C</text><circle cx="165" cy="143" r="22"/><text x="165" y="143">F</text><circle cx="68" cy="105" r="22"/><text x="68" y="105">T</text><text class="ik-leg-label" x="91" y="74">LF</text>
+            </g>
+            <g class="ik-leg" data-leg="lm" tabindex="0" role="button" aria-label="Left middle leg">
+              <path class="ik-leg-line" d="M245 300 L148 300 L50 300"/><circle cx="245" cy="300" r="22"/><text x="245" y="300">C</text><circle cx="148" cy="300" r="22"/><text x="148" y="300">F</text><circle cx="50" cy="300" r="22"/><text x="50" y="300">T</text><text class="ik-leg-label" x="65" y="270">LM</text>
+            </g>
+            <g class="ik-leg" data-leg="lr" tabindex="0" role="button" aria-label="Left rear leg">
+              <path class="ik-leg-line" d="M260 398 L165 457 L68 495"/><circle cx="260" cy="398" r="22"/><text x="260" y="398">C</text><circle cx="165" cy="457" r="22"/><text x="165" y="457">F</text><circle cx="68" cy="495" r="22"/><text x="68" y="495">T</text><text class="ik-leg-label" x="91" y="535">LR</text>
+            </g>
+            <g class="ik-leg" data-leg="rf" tabindex="0" role="button" aria-label="Right front leg">
+              <path class="ik-leg-line" d="M440 202 L535 143 L632 105"/><circle cx="440" cy="202" r="22"/><text x="440" y="202">C</text><circle cx="535" cy="143" r="22"/><text x="535" y="143">F</text><circle cx="632" cy="105" r="22"/><text x="632" y="105">T</text><text class="ik-leg-label" x="609" y="74">RF</text>
+            </g>
+            <g class="ik-leg" data-leg="rm" tabindex="0" role="button" aria-label="Right middle leg">
+              <path class="ik-leg-line" d="M455 300 L552 300 L650 300"/><circle cx="455" cy="300" r="22"/><text x="455" y="300">C</text><circle cx="552" cy="300" r="22"/><text x="552" y="300">F</text><circle cx="650" cy="300" r="22"/><text x="650" y="300">T</text><text class="ik-leg-label" x="635" y="270">RM</text>
+            </g>
+            <g class="ik-leg" data-leg="rr" tabindex="0" role="button" aria-label="Right rear leg">
+              <path class="ik-leg-line" d="M440 398 L535 457 L632 495"/><circle cx="440" cy="398" r="22"/><text x="440" y="398">C</text><circle cx="535" cy="457" r="22"/><text x="535" y="457">F</text><circle cx="632" cy="495" r="22"/><text x="632" y="495">T</text><text class="ik-leg-label" x="609" y="535">RR</text>
+            </g>
+          </svg>
+        </div>
         <div class="graph-help">
           <span>Drag either graph to reposition the preview. Hardware moves only after confirmation.</span>
           <span class="workspace-legend"><span>Commandable</span><span class="blocked">Blocked</span></span>
@@ -1140,16 +1186,19 @@
     }
 
     function renderLegSelector() {
-      elements.legSelector.replaceChildren();
-      for (const leg of LEG_IDS) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `leg-button${leg === state.selectedLeg ? " selected" : ""}${leg === state.activeLeg ? " active" : ""}`;
-        button.textContent = `${leg.toUpperCase()} / ${LEG_NAMES[leg].split(" ")[1]}`;
-        button.disabled = state.busy;
-        button.addEventListener("click", () => selectLeg(leg));
-        elements.legSelector.append(button);
-      }
+      elements.legSelector.querySelectorAll(".ik-leg").forEach((legElement) => {
+        const leg = legElement.dataset.leg;
+        const available = JOINTS.every((joint) => state.mapping[`${leg}.${joint}`]);
+        legElement.classList.toggle("selected", leg === state.selectedLeg);
+        legElement.classList.toggle("active", leg === state.activeLeg);
+        legElement.classList.toggle("unavailable", !available);
+        legElement.tabIndex = state.busy || !available ? -1 : 0;
+        legElement.setAttribute("aria-disabled", String(state.busy || !available));
+        legElement.setAttribute(
+          "aria-label",
+          `${LEG_NAMES[leg]} leg${leg === state.selectedLeg ? ", selected" : ""}${leg === state.activeLeg ? ", holding" : ""}${available ? "" : ", unavailable"}`
+        );
+      });
     }
 
     function render() {
@@ -1521,6 +1570,19 @@
         });
       }
     }
+    elements.legSelector.querySelectorAll(".ik-leg").forEach((legElement) => {
+      const choose = () => {
+        const leg = legElement.dataset.leg;
+        if (!state.busy && JOINTS.every((joint) => state.mapping[`${leg}.${joint}`])) selectLeg(leg);
+      };
+      legElement.addEventListener("click", choose);
+      legElement.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          choose();
+        }
+      });
+    });
     for (const view of ["side", "top"]) {
       const svg = elements[`${view}Svg`];
       svg.addEventListener("pointerdown", (event) => beginGraphDrag(view, event));
