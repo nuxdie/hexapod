@@ -1,0 +1,12 @@
+item - copies to print
+---
+tibia - 6
+femur - 6
+coxa - small gear - 6
+coxa - big gear - 3
+coxa - big gear mirror - 3
+coxa - big gear clip - 3
+coxa - big gear clip mirror - 3
+body bottom - 1
+body top - 1
+
