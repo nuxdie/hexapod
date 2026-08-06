@@ -606,11 +606,13 @@
             <svg id="sideSvg" viewBox="0 0 320 240" role="img" aria-label="Side view of solved leg geometry">
               <rect class="workspace-blocked" x="30" y="20" width="270" height="200"></rect>
               <path id="sideAllowed" class="workspace-allowed"></path>
-              <line class="axis" x1="30" y1="64.4" x2="300" y2="64.4"></line>
+              <line class="axis" x1="30" y1="58.1" x2="300" y2="58.1"></line>
               <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
+              <line id="sideBase" class="segment coxa-segment"></line>
               <line id="sideCoxa" class="segment coxa-segment"></line>
               <line id="sideFemur" class="segment"></line>
               <line id="sideTibia" class="segment"></line>
+              <circle id="sideAxle" class="joint-dot" r="5"></circle>
               <circle id="sideHip" class="joint-dot" r="5"></circle>
               <circle id="sideKnee" class="joint-dot" r="5"></circle>
               <circle id="sideFoot" class="joint-dot" r="5"></circle>
@@ -624,10 +626,14 @@
               <path id="topAllowed" class="workspace-allowed"></path>
               <line class="axis" x1="30" y1="120" x2="300" y2="120"></line>
               <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
+              <line id="topBase" class="segment coxa-segment"></line>
               <line id="topCoxa" class="segment coxa-segment"></line>
-              <line id="topReach" class="segment"></line>
+              <line id="topFemur" class="segment"></line>
+              <line id="topTibia" class="segment"></line>
               <circle id="topOrigin" class="joint-dot" r="5"></circle>
+              <circle id="topAxle" class="joint-dot" r="5"></circle>
               <circle id="topHip" class="joint-dot" r="5"></circle>
+              <circle id="topKnee" class="joint-dot" r="5"></circle>
               <circle id="topFoot" class="joint-dot" r="5"></circle>
               <path id="topTarget" class="target-mark" d="m -7 0 h 14 m -7 -7 v 14"></path>
             </svg>
@@ -652,13 +658,13 @@
 
         <div class="field">
           <div class="coordinate-row">
-            <b>X</b><input id="xNumber" type="number" min="0" max="150" step="1" value="77"><input id="xRange" type="range" min="0" max="150" step="1" value="77">
+            <b>X</b><input id="xNumber" type="number" min="0" max="180" step="1" value="94"><input id="xRange" type="range" min="0" max="180" step="1" value="94">
           </div>
           <div class="coordinate-row">
-            <b>Y</b><input id="yNumber" type="number" min="-100" max="100" step="1" value="0"><input id="yRange" type="range" min="-100" max="100" step="1" value="0">
+            <b>Y</b><input id="yNumber" type="number" min="-110" max="110" step="1" value="-5"><input id="yRange" type="range" min="-110" max="110" step="1" value="-5">
           </div>
           <div class="coordinate-row">
-            <b>Z</b><input id="zNumber" type="number" min="-80" max="140" step="1" value="69"><input id="zRange" type="range" min="-80" max="140" step="1" value="69">
+            <b>Z</b><input id="zNumber" type="number" min="-80" max="170" step="1" value="83"><input id="zRange" type="range" min="-80" max="170" step="1" value="83">
           </div>
         </div>
 
@@ -667,12 +673,17 @@
           <span>Adjustable estimates</span>
         </div>
         <div class="geometry-grid">
-          <label>Coxa mm<input id="coxaLength" type="number" min="0" max="100" step="0.5" value="20"></label>
-          <label>Femur mm<input id="femurLength" type="number" min="1" max="150" step="0.5" value="45"></label>
-          <label>Tibia mm<input id="tibiaLength" type="number" min="1" max="200" step="0.5" value="70"></label>
+          <label>Servo to axle X<input id="baseAxleX" type="number" min="0" max="100" step="0.5" value="40"></label>
+          <label>Axle to femur X<input id="femurPivotX" type="number" min="-100" max="100" step="0.5" value="8"></label>
+          <label>Left femur Y<input id="femurPivotY" type="number" min="-100" max="100" step="0.5" value="-20"></label>
+          <label>Axle to femur Z<input id="femurPivotZ" type="number" min="-100" max="100" step="0.5" value="8"></label>
+          <label>Femur radial<input id="femurLength" type="number" min="1" max="150" step="0.5" value="46"></label>
+          <label>Tibia radial<input id="tibiaLength" type="number" min="1" max="200" step="0.5" value="75"></label>
+          <label>Left tibia Y<input id="tibiaAxialY" type="number" min="-100" max="100" step="0.5" value="15"></label>
+          <label>Coxa output ratio<input id="coxaOutputRatio" type="number" min="0.01" max="2" step="0.0001" value="0.6818"></label>
           <label>Coxa center deg<input id="coxaCenterAngle" type="number" min="-180" max="180" step="1" value="0"></label>
           <label>Femur center deg<input id="femurCenterAngle" type="number" min="-180" max="180" step="1" value="0"></label>
-          <label>Tibia center deg<input id="tibiaCenterAngle" type="number" min="-180" max="180" step="1" value="80"></label>
+          <label>Tibia center deg<input id="tibiaCenterAngle" type="number" min="-180" max="180" step="1" value="90"></label>
         </div>
 
         <div class="section-head">
@@ -704,6 +715,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="leg_kinematics.js"></script>
   <script>
     "use strict";
 
@@ -713,10 +725,10 @@
       rf: "Right front", rm: "Right middle", rr: "Right rear"
     };
     const JOINTS = ["coxa", "femur", "tibia"];
-    const GEOMETRY_KEY = "hex01-leg-geometry-v1";
+    const GEOMETRY_KEY = "hex01-leg-geometry-v2";
     const PLOTS = {
-      side: { left: 30, right: 300, top: 20, bottom: 220, radialMin: 0, radialMax: 150, zMin: -40, zMax: 140 },
-      top: { left: 30, right: 300, top: 20, bottom: 220, xMin: 0, xMax: 150, yMin: -100, yMax: 100 }
+      side: { left: 30, right: 300, top: 20, bottom: 220, radialMin: 0, radialMax: 180, zMin: -40, zMax: 170 },
+      top: { left: 30, right: 300, top: 20, bottom: 220, xMin: 0, xMax: 180, yMin: -110, yMax: 110 }
     };
 
     const state = {
@@ -760,9 +772,14 @@
       xRange: document.querySelector("#xRange"),
       yRange: document.querySelector("#yRange"),
       zRange: document.querySelector("#zRange"),
-      coxaLength: document.querySelector("#coxaLength"),
+      baseAxleX: document.querySelector("#baseAxleX"),
+      femurPivotX: document.querySelector("#femurPivotX"),
+      femurPivotY: document.querySelector("#femurPivotY"),
+      femurPivotZ: document.querySelector("#femurPivotZ"),
       femurLength: document.querySelector("#femurLength"),
       tibiaLength: document.querySelector("#tibiaLength"),
+      tibiaAxialY: document.querySelector("#tibiaAxialY"),
+      coxaOutputRatio: document.querySelector("#coxaOutputRatio"),
       coxaCenterAngle: document.querySelector("#coxaCenterAngle"),
       femurCenterAngle: document.querySelector("#femurCenterAngle"),
       tibiaCenterAngle: document.querySelector("#tibiaCenterAngle"),
@@ -777,19 +794,25 @@
       tibiaPulse: document.querySelector("#tibiaPulse"),
       sideSvg: document.querySelector("#sideSvg"),
       sideAllowed: document.querySelector("#sideAllowed"),
+      sideBase: document.querySelector("#sideBase"),
       sideCoxa: document.querySelector("#sideCoxa"),
       sideFemur: document.querySelector("#sideFemur"),
       sideTibia: document.querySelector("#sideTibia"),
+      sideAxle: document.querySelector("#sideAxle"),
       sideHip: document.querySelector("#sideHip"),
       sideKnee: document.querySelector("#sideKnee"),
       sideFoot: document.querySelector("#sideFoot"),
       sideTarget: document.querySelector("#sideTarget"),
       topSvg: document.querySelector("#topSvg"),
       topAllowed: document.querySelector("#topAllowed"),
+      topBase: document.querySelector("#topBase"),
       topCoxa: document.querySelector("#topCoxa"),
-      topReach: document.querySelector("#topReach"),
+      topFemur: document.querySelector("#topFemur"),
+      topTibia: document.querySelector("#topTibia"),
       topOrigin: document.querySelector("#topOrigin"),
+      topAxle: document.querySelector("#topAxle"),
       topHip: document.querySelector("#topHip"),
+      topKnee: document.querySelector("#topKnee"),
       topFoot: document.querySelector("#topFoot"),
       topTarget: document.querySelector("#topTarget"),
       toast: document.querySelector("#toast")
@@ -801,15 +824,19 @@
       z: [elements.zNumber, elements.zRange]
     };
 
-    function radians(degrees) { return degrees * Math.PI / 180; }
-    function degrees(radiansValue) { return radiansValue * 180 / Math.PI; }
     function clamp(value, minimum, maximum) { return Math.max(minimum, Math.min(maximum, value)); }
+    function legMirror(leg) { return leg.startsWith("r") ? -1 : 1; }
 
     function geometry() {
       return {
-        coxa: Number(elements.coxaLength.value),
-        femur: Number(elements.femurLength.value),
-        tibia: Number(elements.tibiaLength.value),
+        baseX: Number(elements.baseAxleX.value),
+        femurPivotX: Number(elements.femurPivotX.value),
+        femurPivotY: Number(elements.femurPivotY.value),
+        femurPivotZ: Number(elements.femurPivotZ.value),
+        femurLength: Number(elements.femurLength.value),
+        tibiaLength: Number(elements.tibiaLength.value),
+        tibiaAxialY: Number(elements.tibiaAxialY.value),
+        coxaOutputRatio: Number(elements.coxaOutputRatio.value),
         centers: {
           coxa: Number(elements.coxaCenterAngle.value),
           femur: Number(elements.femurCenterAngle.value),
@@ -828,17 +855,7 @@
 
     function neutralTarget() {
       const model = geometry();
-      const yaw = radians(model.centers.coxa);
-      const femur = radians(model.centers.femur);
-      const tibia = radians(model.centers.tibia);
-      const radial = model.coxa
-        + model.femur * Math.cos(femur)
-        + model.tibia * Math.cos(femur + tibia);
-      return {
-        x: radial * Math.cos(yaw),
-        y: radial * Math.sin(yaw),
-        z: model.femur * Math.sin(femur) + model.tibia * Math.sin(femur + tibia)
-      };
+      return HexapodKinematics.forward(model.centers, model, legMirror(state.selectedLeg)).foot;
     }
 
     function sanitizeMap(input) {
@@ -919,7 +936,10 @@
     }
 
     function angleToPulse(joint, angle, servo, model) {
-      const scale = (servo.maxUs - servo.minUs) / servo.travelDegrees;
+      const outputRatio = joint === "coxa" ? model.coxaOutputRatio : 1;
+      const outputTravel = servo.travelDegrees * outputRatio;
+      if (!Number.isFinite(outputTravel) || outputTravel <= 0) return { raw: NaN, rounded: NaN, valid: false };
+      const scale = (servo.maxUs - servo.minUs) / outputTravel;
       const direction = servo.invert ? -1 : 1;
       const raw = servo.centerUs + direction * (angle - model.centers[joint]) * scale;
       return {
@@ -936,48 +956,30 @@
         servos[joint] = state.mapping[`${leg}.${joint}`];
         if (!servos[joint]) return { valid: false, reason: `${LEG_NAMES[leg]} is missing calibrated ${joint} data.` };
       }
-      if (![model.coxa, model.femur, model.tibia, point.x, point.y, point.z].every(Number.isFinite)
-          || model.coxa < 0 || model.femur <= 0 || model.tibia <= 0) {
-        return { valid: false, reason: "Geometry and target values must be finite positive measurements." };
-      }
-
-      const horizontal = Math.hypot(point.x, point.y);
-      const planarX = horizontal - model.coxa;
-      if (planarX < 0) return { valid: false, reason: "Target lies inside the fixed coxa offset." };
-      const reach = Math.hypot(planarX, point.z);
-      const minimumReach = Math.abs(model.femur - model.tibia);
-      const maximumReach = model.femur + model.tibia;
-      if (reach < minimumReach - 0.001 || reach > maximumReach + 0.001) {
-        return { valid: false, reason: `Planar reach ${reach.toFixed(1)} mm is outside ${minimumReach.toFixed(1)}-${maximumReach.toFixed(1)} mm.` };
-      }
-
-      const cosineTibia = clamp(
-        (reach * reach - model.femur * model.femur - model.tibia * model.tibia)
-          / (2 * model.femur * model.tibia),
-        -1,
-        1
-      );
-      const tibiaRad = Math.acos(cosineTibia);
-      const femurRad = Math.atan2(point.z, planarX)
-        - Math.atan2(model.tibia * Math.sin(tibiaRad), model.femur + model.tibia * Math.cos(tibiaRad));
-      const angles = {
-        coxa: degrees(Math.atan2(point.y, point.x)),
-        femur: degrees(femurRad),
-        tibia: degrees(tibiaRad)
-      };
+      const mechanism = HexapodKinematics.solve(point, model, legMirror(leg));
+      if (!mechanism.valid) return mechanism;
+      const angles = mechanism.angles;
       const pulses = {};
       for (const joint of JOINTS) {
         pulses[joint] = angleToPulse(joint, angles[joint], servos[joint], model);
         if (!pulses[joint].valid) {
+          const requiredPulse = Number.isFinite(pulses[joint].raw) ? `${pulses[joint].raw.toFixed(0)} us` : "an invalid pulse";
           return {
             valid: false,
-            reason: `${joint} requires ${pulses[joint].raw.toFixed(0)} us, outside ${servos[joint].minUs}-${servos[joint].maxUs} us.`,
+            reason: `${joint} requires ${requiredPulse}, outside ${servos[joint].minUs}-${servos[joint].maxUs} us.`,
             angles,
-            pulses
+            pulses,
+            joints: mechanism.joints
           };
         }
       }
-      return { valid: true, reason: "Target is reachable and inside all three calibrated pulse limits.", angles, pulses };
+      return {
+        valid: true,
+        reason: "Target is reachable and inside all three calibrated pulse limits.",
+        angles,
+        pulses,
+        joints: mechanism.joints
+      };
     }
 
     function buildPath(from, to) {
@@ -1099,34 +1101,37 @@
     function renderDiagrams(solution, point) {
       const model = geometry();
       const angles = solution.angles || model.centers;
-      const coxa = radians(angles.coxa);
-      const femur = radians(angles.femur);
-      const tibia = radians(angles.tibia);
-      const origin = sideToSvg(0, 0);
-      const hip = sideToSvg(model.coxa, 0);
-      const kneeRadial = model.coxa + model.femur * Math.cos(femur);
-      const kneeZ = model.femur * Math.sin(femur);
-      const footRadial = kneeRadial + model.tibia * Math.cos(femur + tibia);
-      const footZ = kneeZ + model.tibia * Math.sin(femur + tibia);
-      const knee = sideToSvg(kneeRadial, kneeZ);
-      const foot = sideToSvg(footRadial, footZ);
-      setSvgLine(elements.sideCoxa, origin.x, origin.y, hip.x, hip.y);
-      setSvgLine(elements.sideFemur, hip.x, hip.y, knee.x, knee.y);
-      setSvgLine(elements.sideTibia, knee.x, knee.y, foot.x, foot.y);
-      setSvgPoint(elements.sideHip, hip.x, hip.y);
-      setSvgPoint(elements.sideKnee, knee.x, knee.y);
-      setSvgPoint(elements.sideFoot, foot.x, foot.y);
+      const joints = solution.joints || HexapodKinematics.forward(angles, model, legMirror(state.selectedLeg));
+      const sideOrigin = sideToSvg(Math.hypot(joints.servo.x, joints.servo.y), joints.servo.z);
+      const sideAxle = sideToSvg(Math.hypot(joints.axle.x, joints.axle.y), joints.axle.z);
+      const sideHip = sideToSvg(Math.hypot(joints.femurShaft.x, joints.femurShaft.y), joints.femurShaft.z);
+      const sideKnee = sideToSvg(Math.hypot(joints.tibiaShaft.x, joints.tibiaShaft.y), joints.tibiaShaft.z);
+      const sideFoot = sideToSvg(Math.hypot(joints.foot.x, joints.foot.y), joints.foot.z);
+      setSvgLine(elements.sideBase, sideOrigin.x, sideOrigin.y, sideAxle.x, sideAxle.y);
+      setSvgLine(elements.sideCoxa, sideAxle.x, sideAxle.y, sideHip.x, sideHip.y);
+      setSvgLine(elements.sideFemur, sideHip.x, sideHip.y, sideKnee.x, sideKnee.y);
+      setSvgLine(elements.sideTibia, sideKnee.x, sideKnee.y, sideFoot.x, sideFoot.y);
+      setSvgPoint(elements.sideAxle, sideAxle.x, sideAxle.y);
+      setSvgPoint(elements.sideHip, sideHip.x, sideHip.y);
+      setSvgPoint(elements.sideKnee, sideKnee.x, sideKnee.y);
+      setSvgPoint(elements.sideFoot, sideFoot.x, sideFoot.y);
       const sideTarget = sideToSvg(Math.hypot(point.x, point.y), point.z);
       setSvgPoint(elements.sideTarget, sideTarget.x, sideTarget.y);
 
-      const topOrigin = topToSvg(0, 0);
-      const topHip = topToSvg(model.coxa * Math.cos(coxa), model.coxa * Math.sin(coxa));
-      const topFoot = topToSvg(footRadial * Math.cos(coxa), footRadial * Math.sin(coxa));
+      const topOrigin = topToSvg(joints.servo.x, joints.servo.y);
+      const topAxle = topToSvg(joints.axle.x, joints.axle.y);
+      const topHip = topToSvg(joints.femurShaft.x, joints.femurShaft.y);
+      const topKnee = topToSvg(joints.tibiaShaft.x, joints.tibiaShaft.y);
+      const topFoot = topToSvg(joints.foot.x, joints.foot.y);
       const topTarget = topToSvg(point.x, point.y);
-      setSvgLine(elements.topCoxa, topOrigin.x, topOrigin.y, topHip.x, topHip.y);
-      setSvgLine(elements.topReach, topHip.x, topHip.y, topFoot.x, topFoot.y);
+      setSvgLine(elements.topBase, topOrigin.x, topOrigin.y, topAxle.x, topAxle.y);
+      setSvgLine(elements.topCoxa, topAxle.x, topAxle.y, topHip.x, topHip.y);
+      setSvgLine(elements.topFemur, topHip.x, topHip.y, topKnee.x, topKnee.y);
+      setSvgLine(elements.topTibia, topKnee.x, topKnee.y, topFoot.x, topFoot.y);
       setSvgPoint(elements.topOrigin, topOrigin.x, topOrigin.y);
+      setSvgPoint(elements.topAxle, topAxle.x, topAxle.y);
       setSvgPoint(elements.topHip, topHip.x, topHip.y);
+      setSvgPoint(elements.topKnee, topKnee.x, topKnee.y);
       setSvgPoint(elements.topFoot, topFoot.x, topFoot.y);
       setSvgPoint(elements.topTarget, topTarget.x, topTarget.y);
       elements.sideTarget.classList.toggle("invalid", !solution.valid);
@@ -1239,7 +1244,8 @@
         controls.forEach((control) => { control.disabled = state.busy; });
       }
       for (const input of [
-        elements.coxaLength, elements.femurLength, elements.tibiaLength,
+        elements.baseAxleX, elements.femurPivotX, elements.femurPivotY, elements.femurPivotZ,
+        elements.femurLength, elements.tibiaLength, elements.tibiaAxialY, elements.coxaOutputRatio,
         elements.coxaCenterAngle, elements.femurCenterAngle, elements.tibiaCenterAngle
       ]) {
         input.disabled = state.busy || state.activeLeg !== null;
@@ -1533,9 +1539,19 @@
       try {
         const saved = JSON.parse(localStorage.getItem(GEOMETRY_KEY));
         if (!saved) return;
-        if (Number.isFinite(saved.coxa)) elements.coxaLength.value = saved.coxa;
-        if (Number.isFinite(saved.femur)) elements.femurLength.value = saved.femur;
-        if (Number.isFinite(saved.tibia)) elements.tibiaLength.value = saved.tibia;
+        const fields = {
+          baseX: elements.baseAxleX,
+          femurPivotX: elements.femurPivotX,
+          femurPivotY: elements.femurPivotY,
+          femurPivotZ: elements.femurPivotZ,
+          femurLength: elements.femurLength,
+          tibiaLength: elements.tibiaLength,
+          tibiaAxialY: elements.tibiaAxialY,
+          coxaOutputRatio: elements.coxaOutputRatio
+        };
+        for (const [name, input] of Object.entries(fields)) {
+          if (Number.isFinite(saved[name])) input.value = saved[name];
+        }
         for (const joint of JOINTS) {
           if (Number.isFinite(saved.centers?.[joint])) elements[`${joint}CenterAngle`].value = saved.centers[joint];
         }
@@ -1592,7 +1608,8 @@
       svg.addEventListener("lostpointercapture", (event) => endGraphDrag(view, event));
     }
     for (const input of [
-      elements.coxaLength, elements.femurLength, elements.tibiaLength,
+      elements.baseAxleX, elements.femurPivotX, elements.femurPivotY, elements.femurPivotZ,
+      elements.femurLength, elements.tibiaLength, elements.tibiaAxialY, elements.coxaOutputRatio,
       elements.coxaCenterAngle, elements.femurCenterAngle, elements.tibiaCenterAngle
     ]) {
       input.addEventListener("input", () => { saveGeometry(); render(); });
