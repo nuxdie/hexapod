@@ -1,133 +1,241 @@
 {
   "format": "hex01-servo-map",
-  "version": 2,
-  "generated_at": "2026-08-06T21:26:13.966Z",
+  "version": 3,
+  "generated_at": "2026-08-06T22:13:14.140Z",
   "assignments": {
     "lf.coxa": {
       "board": 1,
       "address": "0x41",
       "channel": 14,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1522,
+      "min_us": 348,
+      "max_us": 2686,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lf.femur": {
       "board": 0,
       "address": "0x40",
       "channel": 10,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1790,
+      "min_us": 403,
+      "max_us": 2603,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lf.tibia": {
       "board": 1,
       "address": "0x41",
       "channel": 7,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lm.coxa": {
       "board": 1,
       "address": "0x41",
       "channel": 13,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1633,
+      "min_us": 505,
+      "max_us": 2733,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lm.femur": {
       "board": 1,
       "address": "0x41",
       "channel": 3,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1799,
+      "min_us": 375,
+      "max_us": 2760,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lm.tibia": {
       "board": 0,
       "address": "0x40",
       "channel": 9,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lr.coxa": {
       "board": 0,
       "address": "0x40",
       "channel": 15,
       "center_us": 1500,
-      "invert": false
+      "min_us": 320,
+      "max_us": 2557,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lr.femur": {
       "board": 0,
       "address": "0x40",
       "channel": 11,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1657,
+      "min_us": 375,
+      "max_us": 2548,
+      "travel_degrees": 180,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "lr.tibia": {
       "board": 1,
       "address": "0x41",
       "channel": 6,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rf.coxa": {
       "board": 0,
       "address": "0x40",
       "channel": 7,
       "center_us": 1500,
-      "invert": false
+      "min_us": 274,
+      "max_us": 2613,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rf.femur": {
       "board": 0,
       "address": "0x40",
       "channel": 13,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1318,
+      "min_us": 357,
+      "max_us": 2705,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rf.tibia": {
       "board": 1,
       "address": "0x41",
       "channel": 1,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rm.coxa": {
       "board": 0,
       "address": "0x40",
       "channel": 14,
       "center_us": 1500,
-      "invert": false
+      "min_us": 311,
+      "max_us": 2576,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rm.femur": {
       "board": 1,
       "address": "0x41",
       "channel": 0,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1050,
+      "min_us": 366,
+      "max_us": 2686,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rm.tibia": {
       "board": 0,
       "address": "0x40",
       "channel": 8,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rr.coxa": {
       "board": 1,
       "address": "0x41",
       "channel": 12,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1577,
+      "min_us": 394,
+      "max_us": 2649,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rr.femur": {
       "board": 0,
       "address": "0x40",
       "channel": 12,
-      "center_us": 1500,
-      "invert": false
+      "center_us": 1004,
+      "min_us": 338,
+      "max_us": 2585,
+      "travel_degrees": 180,
+      "invert": true,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     },
     "rr.tibia": {
       "board": 1,
       "address": "0x41",
       "channel": 5,
       "center_us": 1500,
-      "invert": false
+      "min_us": 500,
+      "max_us": 2500,
+      "travel_degrees": 360,
+      "invert": false,
+      "calibrated": true,
+      "min_captured": true,
+      "max_captured": true
     }
   }
 }
