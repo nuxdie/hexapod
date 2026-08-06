@@ -444,6 +444,14 @@
 
     .geometry-grid input { margin-top: 5px; }
 
+    .live-drag-option {
+      margin-top: -7px;
+      padding: 10px 11px;
+      color: #332c20;
+      background: #e7c681;
+      border: 1px solid #a58449;
+    }
+
     .action-stack {
       display: grid;
       gap: 8px;
@@ -596,7 +604,7 @@
           </svg>
         </div>
         <div class="graph-help">
-          <span>Drag either graph to reposition the preview. Hardware moves only after confirmation.</span>
+          <span>Drag either graph to reposition the preview. An engaged leg follows when Live drag is enabled.</span>
           <span class="workspace-legend"><span>Commandable</span><span class="blocked">Blocked</span></span>
         </div>
 
@@ -607,7 +615,7 @@
               <rect class="workspace-blocked" x="30" y="20" width="270" height="200"></rect>
               <path id="sideAllowed" class="workspace-allowed"></path>
               <line class="axis" x1="30" y1="58.1" x2="300" y2="58.1"></line>
-              <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
+              <line id="sideVerticalAxis" class="axis" x1="300" y1="20" x2="300" y2="220"></line>
               <line id="sideBase" class="segment coxa-segment"></line>
               <line id="sideCoxa" class="segment coxa-segment"></line>
               <line id="sideFemur" class="segment"></line>
@@ -625,7 +633,7 @@
               <rect class="workspace-blocked" x="30" y="20" width="270" height="200"></rect>
               <path id="topAllowed" class="workspace-allowed"></path>
               <line class="axis" x1="30" y1="120" x2="300" y2="120"></line>
-              <line class="axis" x1="30" y1="20" x2="30" y2="220"></line>
+              <line id="topVerticalAxis" class="axis" x1="300" y1="20" x2="300" y2="220"></line>
               <line id="topBase" class="segment coxa-segment"></line>
               <line id="topCoxa" class="segment coxa-segment"></line>
               <line id="topFemur" class="segment"></line>
@@ -695,6 +703,7 @@
           <label>Frame ms<input id="frameDelay" type="number" min="20" max="100" step="5" value="20"></label>
           <label>Path<input id="pathLength" type="text" value="0" disabled></label>
         </div>
+        <label class="check live-drag-option"><input id="liveDrag" type="checkbox" checked> Live hardware while dragging valid targets</label>
 
         <div class="action-stack">
           <button id="engageButton" class="button secondary full" type="button" disabled>Engage selected leg at neutral</button>
@@ -745,6 +754,8 @@
       connecting: false,
       busy: false,
       motionCancel: false,
+      liveDragTarget: null,
+      liveDragRunning: false,
       dragView: null,
       dragPointerId: null,
       regionKeys: { side: null, top: null },
@@ -786,6 +797,7 @@
       motionSpeed: document.querySelector("#motionSpeed"),
       frameDelay: document.querySelector("#frameDelay"),
       pathLength: document.querySelector("#pathLength"),
+      liveDrag: document.querySelector("#liveDrag"),
       coxaAngle: document.querySelector("#coxaAngle"),
       femurAngle: document.querySelector("#femurAngle"),
       tibiaAngle: document.querySelector("#tibiaAngle"),
@@ -794,6 +806,7 @@
       tibiaPulse: document.querySelector("#tibiaPulse"),
       sideSvg: document.querySelector("#sideSvg"),
       sideAllowed: document.querySelector("#sideAllowed"),
+      sideVerticalAxis: document.querySelector("#sideVerticalAxis"),
       sideBase: document.querySelector("#sideBase"),
       sideCoxa: document.querySelector("#sideCoxa"),
       sideFemur: document.querySelector("#sideFemur"),
@@ -805,6 +818,7 @@
       sideTarget: document.querySelector("#sideTarget"),
       topSvg: document.querySelector("#topSvg"),
       topAllowed: document.querySelector("#topAllowed"),
+      topVerticalAxis: document.querySelector("#topVerticalAxis"),
       topBase: document.querySelector("#topBase"),
       topCoxa: document.querySelector("#topCoxa"),
       topFemur: document.querySelector("#topFemur"),
@@ -1024,18 +1038,31 @@
 
     function sideToSvg(radial, z) {
       const plot = PLOTS.side;
+      const fraction = (radial - plot.radialMin) / (plot.radialMax - plot.radialMin);
       return {
-        x: plot.left + (radial - plot.radialMin) / (plot.radialMax - plot.radialMin) * (plot.right - plot.left),
+        x: legMirror(state.selectedLeg) > 0
+          ? plot.right - fraction * (plot.right - plot.left)
+          : plot.left + fraction * (plot.right - plot.left),
         y: plot.top + (z - plot.zMin) / (plot.zMax - plot.zMin) * (plot.bottom - plot.top)
       };
     }
 
     function topToSvg(x, y) {
       const plot = PLOTS.top;
+      const fraction = (x - plot.xMin) / (plot.xMax - plot.xMin);
       return {
-        x: plot.left + (x - plot.xMin) / (plot.xMax - plot.xMin) * (plot.right - plot.left),
+        x: legMirror(state.selectedLeg) > 0
+          ? plot.right - fraction * (plot.right - plot.left)
+          : plot.left + fraction * (plot.right - plot.left),
         y: plot.top + (plot.yMax - y) / (plot.yMax - plot.yMin) * (plot.bottom - plot.top)
       };
+    }
+
+    function graphHorizontalValue(pixelX, plot, minimum, maximum) {
+      const fraction = legMirror(state.selectedLeg) > 0
+        ? (plot.right - pixelX) / (plot.right - plot.left)
+        : (pixelX - plot.left) / (plot.right - plot.left);
+      return minimum + fraction * (maximum - minimum);
     }
 
     function svgCoordinates(svg, event) {
@@ -1071,14 +1098,12 @@
           const pixelY = plot.top + (row + 0.5) * cellHeight;
           let sample;
           if (view === "side") {
-            const radial = plot.radialMin
-              + (pixelX - plot.left) / (plot.right - plot.left) * (plot.radialMax - plot.radialMin);
+            const radial = graphHorizontalValue(pixelX, plot, plot.radialMin, plot.radialMax);
             const z = plot.zMin
               + (pixelY - plot.top) / (plot.bottom - plot.top) * (plot.zMax - plot.zMin);
             sample = { x: radial * Math.cos(yaw), y: radial * Math.sin(yaw), z };
           } else {
-            const x = plot.xMin
-              + (pixelX - plot.left) / (plot.right - plot.left) * (plot.xMax - plot.xMin);
+            const x = graphHorizontalValue(pixelX, plot, plot.xMin, plot.xMax);
             const y = plot.yMax
               - (pixelY - plot.top) / (plot.bottom - plot.top) * (plot.yMax - plot.yMin);
             sample = { x, y, z: point.z };
@@ -1102,6 +1127,11 @@
       const model = geometry();
       const angles = solution.angles || model.centers;
       const joints = solution.joints || HexapodKinematics.forward(angles, model, legMirror(state.selectedLeg));
+      const originX = legMirror(state.selectedLeg) > 0 ? PLOTS.side.right : PLOTS.side.left;
+      elements.sideVerticalAxis.setAttribute("x1", originX);
+      elements.sideVerticalAxis.setAttribute("x2", originX);
+      elements.topVerticalAxis.setAttribute("x1", originX);
+      elements.topVerticalAxis.setAttribute("x2", originX);
       const sideOrigin = sideToSvg(Math.hypot(joints.servo.x, joints.servo.y), joints.servo.z);
       const sideAxle = sideToSvg(Math.hypot(joints.axle.x, joints.axle.y), joints.axle.z);
       const sideHip = sideToSvg(Math.hypot(joints.femurShaft.x, joints.femurShaft.y), joints.femurShaft.z);
@@ -1147,8 +1177,7 @@
       if (view === "side") {
         const x = clamp(pixel.x, plot.left, plot.right);
         const y = clamp(pixel.y, plot.top, plot.bottom);
-        const radial = plot.radialMin
-          + (x - plot.left) / (plot.right - plot.left) * (plot.radialMax - plot.radialMin);
+        const radial = graphHorizontalValue(x, plot, plot.radialMin, plot.radialMax);
         const z = plot.zMin
           + (y - plot.top) / (plot.bottom - plot.top) * (plot.zMax - plot.zMin);
         const yaw = Math.atan2(point.y, point.x);
@@ -1158,13 +1187,13 @@
       } else {
         const x = clamp(pixel.x, plot.left, plot.right);
         const y = clamp(pixel.y, plot.top, plot.bottom);
-        point.x = plot.xMin
-          + (x - plot.left) / (plot.right - plot.left) * (plot.xMax - plot.xMin);
+        point.x = graphHorizontalValue(x, plot, plot.xMin, plot.xMax);
         point.y = plot.yMax
           - (y - plot.top) / (plot.bottom - plot.top) * (plot.yMax - plot.yMin);
       }
       setTargetInputs(point);
       render();
+      scheduleLiveDrag(target(), state.solution);
     }
 
     function beginGraphDrag(view, event) {
@@ -1188,6 +1217,79 @@
       state.dragPointerId = null;
       render();
       event.preventDefault();
+    }
+
+    function canLiveDrag() {
+      return elements.liveDrag.checked
+        && state.connected
+        && elements.safety.checked
+        && state.activeLeg === state.selectedLeg
+        && Boolean(state.currentTarget)
+        && !state.busy;
+    }
+
+    function scheduleLiveDrag(point, solution) {
+      if (!canLiveDrag() || !solution.valid) {
+        state.liveDragTarget = null;
+        return;
+      }
+      state.liveDragTarget = { x: point.x, y: point.y, z: point.z };
+      if (!state.liveDragRunning) runLiveDrag();
+    }
+
+    async function runLiveDrag() {
+      if (state.liveDragRunning || !canLiveDrag()) return;
+      state.liveDragRunning = true;
+      render();
+      try {
+        while (state.liveDragTarget && canLiveDrag()) {
+          const desired = state.liveDragTarget;
+          const current = state.currentTarget;
+          const dx = desired.x - current.x;
+          const dy = desired.y - current.y;
+          const dz = desired.z - current.z;
+          const distance = Math.hypot(dx, dy, dz);
+          if (distance <= 0.05) {
+            state.currentTarget = { ...desired };
+            state.liveDragTarget = null;
+            break;
+          }
+
+          const frameMs = clamp(Number(elements.frameDelay.value) || 20, 20, 100);
+          const speed = clamp(Number(elements.motionSpeed.value) || 35, 5, 100);
+          const step = Math.min(distance, speed * frameMs / 1000);
+          const fraction = step / distance;
+          const next = {
+            x: current.x + dx * fraction,
+            y: current.y + dy * fraction,
+            z: current.z + dz * fraction
+          };
+          const solution = solveIK(next);
+          if (!solution.valid) {
+            state.liveDragTarget = null;
+            break;
+          }
+
+          const frameStartedAt = performance.now();
+          await commandSolution(solution);
+          state.currentTarget = next;
+          const waitMs = frameMs - (performance.now() - frameStartedAt);
+          if (waitMs > 0) await delay(waitMs);
+        }
+      } catch (error) {
+        state.liveDragTarget = null;
+        if (error.message !== "motion cancelled") {
+          await enqueue({ cmd: "relax_all" }).catch(() => {});
+          state.activeLeg = null;
+          state.currentTarget = null;
+          toast(`Live drag stopped and outputs relaxed: ${error.message}`);
+          addLog(`Live drag failed: ${error.message}`, "error");
+        }
+      } finally {
+        state.liveDragRunning = false;
+        render();
+        if (state.liveDragTarget && canLiveDrag()) runLiveDrag();
+      }
     }
 
     function renderLegSelector() {
@@ -1226,19 +1328,21 @@
         : "--";
 
       const ready = state.connected && elements.safety.checked && selectedServos() && !state.busy;
-      elements.connect.disabled = state.connecting || state.busy;
+      elements.connect.disabled = state.connecting || state.busy || state.liveDragRunning;
       elements.connect.textContent = state.connecting ? "Waiting for Pico" : state.connected ? "Disconnect" : "Connect Pico";
       elements.connection.textContent = state.connecting
         ? "Connecting"
         : state.busy
           ? "Motion in progress"
+          : state.liveDragRunning
+            ? "Live drag following target"
           : state.connected
             ? "Firmware ready / PCA online"
             : "Disconnected";
       elements.connection.classList.toggle("ready", state.connected);
       elements.relaxAll.disabled = !state.connected;
       elements.engage.disabled = !ready || state.activeLeg === state.selectedLeg;
-      elements.move.disabled = !ready || state.activeLeg !== state.selectedLeg || !solution.valid || !path?.valid;
+      elements.move.disabled = !ready || state.liveDragRunning || state.activeLeg !== state.selectedLeg || !solution.valid || !path?.valid;
       elements.relaxLeg.disabled = !state.connected || state.busy || state.activeLeg !== state.selectedLeg;
       for (const controls of Object.values(coordinateElements)) {
         controls.forEach((control) => { control.disabled = state.busy; });
@@ -1252,6 +1356,7 @@
       }
       elements.motionSpeed.disabled = state.busy;
       elements.frameDelay.disabled = state.busy;
+      elements.liveDrag.disabled = state.busy;
       elements.sideSvg.setAttribute("aria-disabled", String(state.busy));
       elements.topSvg.setAttribute("aria-disabled", String(state.busy));
 
@@ -1321,6 +1426,7 @@
       state.reading = false;
       state.busy = false;
       state.motionCancel = true;
+      state.liveDragTarget = null;
       state.activeLeg = null;
       state.currentTarget = null;
       for (const pending of state.pending.values()) {
@@ -1464,6 +1570,7 @@
         return;
       }
       state.busy = true;
+      state.liveDragTarget = null;
       state.motionCancel = false;
       render();
       const startedAt = performance.now();
@@ -1489,6 +1596,8 @@
 
     async function relaxSelectedLeg() {
       if (!state.connected || state.activeLeg !== state.selectedLeg || state.busy) return;
+      state.liveDragTarget = null;
+      state.motionCancel = true;
       const servos = selectedServos();
       try {
         for (const joint of JOINTS) {
@@ -1506,6 +1615,7 @@
     async function relaxAll() {
       if (!state.connected) return;
       const motionWasBusy = state.busy;
+      state.liveDragTarget = null;
       state.motionCancel = true;
       try {
         await enqueue({ cmd: "relax_all" });
@@ -1616,6 +1726,10 @@
     }
     elements.motionSpeed.addEventListener("input", render);
     elements.frameDelay.addEventListener("input", render);
+    elements.liveDrag.addEventListener("change", () => {
+      if (!elements.liveDrag.checked) state.liveDragTarget = null;
+      render();
+    });
     elements.connect.addEventListener("click", connectSerial);
     elements.relaxAll.addEventListener("click", relaxAll);
     elements.engage.addEventListener("click", engageNeutral);
