@@ -1,241 +1,133 @@
 {
   "format": "hex01-servo-map",
-  "version": 3,
-  "generated_at": "2026-08-02T23:19:09.046Z",
+  "version": 2,
+  "generated_at": "2026-08-06T21:26:13.966Z",
   "assignments": {
     "lf.coxa": {
       "board": 1,
       "address": "0x41",
-      "channel": 0,
-      "center_us": 1475,
-      "min_us": 865,
-      "max_us": 2779,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 14,
+      "center_us": 1500,
+      "invert": false
     },
     "lf.femur": {
       "board": 0,
       "address": "0x40",
-      "channel": 7,
-      "center_us": 1161,
-      "min_us": 311,
-      "max_us": 2548,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 10,
+      "center_us": 1500,
+      "invert": false
     },
     "lf.tibia": {
-      "board": 0,
-      "address": "0x40",
-      "channel": 4,
-      "center_us": 1337,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "board": 1,
+      "address": "0x41",
+      "channel": 7,
+      "center_us": 1500,
+      "invert": false
     },
     "lm.coxa": {
       "board": 1,
       "address": "0x41",
-      "channel": 2,
-      "center_us": 1485,
-      "min_us": 801,
-      "max_us": 2437,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 13,
+      "center_us": 1500,
+      "invert": false
     },
     "lm.femur": {
       "board": 1,
       "address": "0x41",
-      "channel": 4,
-      "center_us": 1882,
-      "min_us": 375,
-      "max_us": 2733,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 3,
+      "center_us": 1500,
+      "invert": false
     },
     "lm.tibia": {
       "board": 0,
       "address": "0x40",
-      "channel": 6,
-      "center_us": 1106,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 9,
+      "center_us": 1500,
+      "invert": false
     },
     "lr.coxa": {
-      "board": 1,
-      "address": "0x41",
-      "channel": 1,
-      "center_us": 1383,
-      "min_us": 329,
-      "max_us": 2363,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "board": 0,
+      "address": "0x40",
+      "channel": 15,
+      "center_us": 1500,
+      "invert": false
     },
     "lr.femur": {
       "board": 0,
       "address": "0x40",
-      "channel": 8,
-      "center_us": 1559,
-      "min_us": 357,
-      "max_us": 2668,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 11,
+      "center_us": 1500,
+      "invert": false
     },
     "lr.tibia": {
-      "board": 0,
-      "address": "0x40",
-      "channel": 3,
-      "center_us": 1226,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
-    },
-    "rf.coxa": {
       "board": 1,
       "address": "0x41",
       "channel": 6,
-      "center_us": 1808,
-      "min_us": 403,
-      "max_us": 2548,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "center_us": 1500,
+      "invert": false
+    },
+    "rf.coxa": {
+      "board": 0,
+      "address": "0x40",
+      "channel": 7,
+      "center_us": 1500,
+      "invert": false
     },
     "rf.femur": {
-      "board": 1,
-      "address": "0x41",
-      "channel": 5,
-      "center_us": 2030,
-      "min_us": 320,
-      "max_us": 2668,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "board": 0,
+      "address": "0x40",
+      "channel": 13,
+      "center_us": 1500,
+      "invert": false
     },
     "rf.tibia": {
-      "board": 0,
-      "address": "0x40",
-      "channel": 0,
-      "center_us": 1725,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
-    },
-    "rm.coxa": {
       "board": 1,
       "address": "0x41",
-      "channel": 8,
-      "center_us": 1910,
-      "min_us": 1041,
-      "max_us": 2594,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 1,
+      "center_us": 1500,
+      "invert": false
     },
-    "rm.femur": {
+    "rm.coxa": {
       "board": 0,
       "address": "0x40",
-      "channel": 5,
-      "center_us": 1559,
-      "min_us": 338,
-      "max_us": 2649,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 14,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rm.femur": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 0,
+      "center_us": 1500,
+      "invert": false
     },
     "rm.tibia": {
       "board": 0,
       "address": "0x40",
-      "channel": 2,
-      "center_us": 1753,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 8,
+      "center_us": 1500,
+      "invert": false
     },
     "rr.coxa": {
       "board": 1,
       "address": "0x41",
-      "channel": 7,
-      "center_us": 1254,
-      "min_us": 505,
-      "max_us": 2548,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 12,
+      "center_us": 1500,
+      "invert": false
     },
     "rr.femur": {
-      "board": 1,
-      "address": "0x41",
-      "channel": 3,
-      "center_us": 1744,
-      "min_us": 366,
-      "max_us": 2622,
-      "travel_degrees": 180,
-      "invert": true,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
-    },
-    "rr.tibia": {
       "board": 0,
       "address": "0x40",
-      "channel": 1,
-      "center_us": 1928,
-      "min_us": 500,
-      "max_us": 2500,
-      "travel_degrees": 180,
-      "invert": false,
-      "calibrated": true,
-      "min_captured": true,
-      "max_captured": true
+      "channel": 12,
+      "center_us": 1500,
+      "invert": false
+    },
+    "rr.tibia": {
+      "board": 1,
+      "address": "0x41",
+      "channel": 5,
+      "center_us": 1500,
+      "invert": false
     }
   }
 }
