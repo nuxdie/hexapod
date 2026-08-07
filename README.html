@@ -644,6 +644,7 @@
         <a href="servo_calibrator.html">Calibration</a>
         <a href="servo_control.html">Manual control</a>
         <a href="leg_ik.html">Leg IK</a>
+        <a href="static_pose.html">Static pose</a>
       </div>
       <div class="hero">
         <div>
@@ -912,6 +913,7 @@
             <a href="servo_calibrator.html">servo_calibrator.html</a>
             <a href="servo_control.html">servo_control.html</a>
             <a href="leg_ik.html">leg_ik.html</a>
+            <a href="static_pose.html">static_pose.html</a>
             <a href="leg_kinematics.js">leg_kinematics.js</a>
             <a href="servo_mapper_pico.py">servo_mapper_pico.py</a>
             <a href="servo-map.json">servo-map.json</a>
@@ -939,6 +941,10 @@
             <strong>Single-leg inverse kinematics</strong>
             <p>Open <a href="leg_ik.html"><code>http://localhost:8000/leg_ik.html</code></a> to preview and command one foot in leg-local XYZ coordinates. The side and top graphs mirror their outward axis for the selected robot side. Drag through calibrated green/red workspace slices to move the preview; after a leg is engaged, the opt-in Live drag mode follows valid targets with rate-limited 20 ms hardware frames. The offset-axis model places the driven coxa axle 40 mm from the servo, the left femur pivot at <code>(8, -20, 8)</code> mm from that axle, the tibia shaft 46 mm from the femur shaft, and the foot tip 75 mm radially plus 15 mm axially from the tibia shaft; Y offsets mirror on the right. Coxa output uses the 15:22 gear ratio. Firmware v6 sends each three-joint pose as one synchronized frame, while the browser applies smooth acceleration and deceleration at up to 50 updates per second. Every commanded step is checked for geometric reach and calibrated pulse limits; collision checking is a later gate.</p>
           </div>
+          <div class="note">
+            <strong>Six-leg static poses</strong>
+            <p>Open <a href="static_pose.html"><code>http://localhost:8000/static_pose.html</code></a> to preview and command a common six-leg stance. The tool stage-engages one leg at a time, validates all six offset-axis IK solutions over the complete path, then sends all 18 outputs in synchronized firmware-v6 frames. This stage is for elevated stand/crouch testing; collision constraints and gait cycling are not included yet.</p>
+          </div>
           <div class="note warning">
             <strong>Current code status</strong>
             <p><code>pca9685_bringup.py</code> initializes both PCA9685 boards unconditionally and loops over all 16 channels on each board. That is a 32-channel test, not an 18-servo test. Before connecting the complete robot, revise it to map exactly 18 named joints and only command channels that are physically populated.</p>
@@ -949,7 +955,7 @@
 
     <footer>
       <span>HEX-01 / HEXAPOD DEVELOPMENT DOSSIER</span>
-      <span>Next gate: validate single-leg IK, then map coupled collision limits</span>
+      <span>Next gate: validate six-leg static poses, then map coupled collision limits</span>
     </footer>
   </div>
 </body>
